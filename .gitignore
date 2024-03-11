@@ -86,3 +86,9 @@ Module.symvers
 Mkfile.old
 dkms.conf
 
+# Batch job
+*.sh
+
+# HAWK-specific output
+*.e*
+*.o*
