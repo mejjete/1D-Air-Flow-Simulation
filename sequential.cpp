@@ -72,14 +72,13 @@ int main()
     */
     for (int i = 2; i < dt; i++) 
     {
-        // Loop over spatial steps
-        for (int k = 1; k < kmax; k++) 
-        {
+        // Loop over spatial steps for flow
+        for (int k = 1; k < kmax; k++) {
             Q[k][i + 1] = Q[k][i] + h * (alpha * (P[k - 1][i] - P[k][i]) - beta * Q[k][i] * abs(Q[k][i]));
-
-            // DO NOT calculate pressure for the last element such as it is given by default
-            if (k != kmax - 1) 
-                P[k][i + 1] = P[k][i - 2] + h * (gamma * (Q[k][i] - Q[k + 1][i]));
+        }
+        // Loop over steps for pressure, DO NOT calculate pressure for the last element as it is given as a boundary condition
+        for (int k = 1; k < kmax - 1; k++)  {
+            P[k][i + 1] = P[k][i - 2] + h * (gamma * (Q[k][i] - Q[k + 1][i]));
         }
     }
     
