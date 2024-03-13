@@ -31,6 +31,17 @@ int main()
     int dt = 100000; 
     double h = 0.007;
 
+
+    std::cout << "--------------------------------------------------" << std::endl;
+    std::cout << "Simulation parameters" << std::endl;
+    std::cout << "--------------------------------------------------" << std::endl;
+    std::cout << "l:    " << l << std::endl;
+    std::cout << "dx:   " << dx << std::endl;
+    std::cout << "kmax: " << kmax << std::endl;
+    std::cout << "dt:   " << dt << std::endl;
+    std::cout << "h:    " << h << std::endl;
+    std::cout << "--------------------------------------------------" << std::endl;
+
     // Stores the approximated values for each step 
     double Q[kmax][dt];
     double P[kmax][dt];
