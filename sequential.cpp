@@ -28,7 +28,7 @@ int main()
      * 
      * Changing of any of them might result in NaN error.
     */
-    int dt = 100000; 
+    int dt = 1000;
     double h = 0.007;
 
 
