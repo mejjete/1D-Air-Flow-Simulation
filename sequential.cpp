@@ -7,22 +7,35 @@ using namespace std;
 
 int main() 
 {
-    int l = 1925;             // Edge length
-    int dx = 40;               // Spatial step
-    int dt = 100000;          // Euler's step
-    int kmax = l / dx;        // Number of spatial steps
+    int l = 1925;               // Edge length
+    int dx = 5;                 // Spatial step
+    int kmax = l / dx;          // Number of spatial steps
 
-    // Parameters
-    double alpha = 0.093;
+    /**
+     * Coefficients alpha and gamma are different for different 
+     * edges. It depends on the edge's lenght, cross-sectional area etc.
+    */
+    double alpha = 0.744;
     double beta = 0.004;
-    double gamma = 728.6;
+    double gamma = 5829;
+
+    /**
+     * dt   - the number of approximation in Euler method
+     * h    - discretization step in Euler method
+     * 
+     * Those two values work well with all existing steps and give us
+     * result that satisfies the initial condition pretty close.
+     * 
+     * Changing of any of them might result in NaN error.
+    */
+    int dt = 100000; 
     double h = 0.007;
 
-    // Arrays to store data
+    // Stores the approximated values for each step 
     double Q[kmax][dt];
     double P[kmax][dt];
 
-    // Loop over time steps
+    // Prepare initial condition
     for (int i = 0; i < dt; i++) 
     {
         // Loop over spatial steps
@@ -41,7 +54,11 @@ int main()
         }
     }
 
-    // Main calculation loop
+    /**
+     * In fact, we have two 'steps'. The first step represents the approximation 
+     * criteria in Euler's method (dt) and the second one represents the actual
+     * spatial step along the edge (dx).
+    */
     for (int i = 2; i < dt; i++) 
     {
         // Loop over spatial steps
@@ -55,7 +72,7 @@ int main()
         }
     }
     
-    // Print out the first 10 of Q for each spatial step
+    // Print out the first 10 values of Q for each spatial step
     std::cout << "FIRST 10 VALUES\n";
     for(int i = 0; i < kmax; i++)
     {
@@ -68,7 +85,7 @@ int main()
         std::cout << std::endl;
     }
 
-    // Print out the first 10 of Q for each spatial step
+    // Print out the last 10 values of Q for each spatial step
     std::cout << "LAST 10 VALUES:\n";
     for(int i = 1; i < kmax; i++)
     {
@@ -80,7 +97,6 @@ int main()
             std::cout << std::setw(10) << Q[i][dt - 10 + k];
         std::cout << std::endl;
     }
-
 
     return 0;
 }
