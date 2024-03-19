@@ -28,12 +28,23 @@ int main()
      * 
      * Changing of any of them might result in NaN error.
     */
-    int dt = 100000; 
+    int dt = 1000;
     double h = 0.007;
 
+
+    std::cout << "--------------------------------------------------" << std::endl;
+    std::cout << "Simulation parameters" << std::endl;
+    std::cout << "--------------------------------------------------" << std::endl;
+    std::cout << "l:    " << l << std::endl;
+    std::cout << "dx:   " << dx << std::endl;
+    std::cout << "kmax: " << kmax << std::endl;
+    std::cout << "dt:   " << dt << std::endl;
+    std::cout << "h:    " << h << std::endl;
+    std::cout << "--------------------------------------------------" << std::endl;
+
     // Stores the approximated values for each step 
-    double Q[kmax][dt];
-    double P[kmax][dt];
+    double Q[dt][kmax];
+    double P[dt][kmax];
 
     // Prepare initial condition
     for (int i = 0; i < dt; i++) 
@@ -44,12 +55,12 @@ int main()
             // Boundary condition for the last spatial step
             if (k == kmax - 1) 
             {
-                Q[k][i] = 0;
-                P[k][i] = -202.0;   // P = -202 when Q = 10
+                Q[i][k] = 0;
+                P[i][k] = -202.0;   // P = -202 when Q = 10
             } else 
             {
-                Q[k][i] = 0;
-                P[k][i] = 0;
+                Q[i][k] = 0;
+                P[i][k] = 0;
             }
         }
     }
@@ -61,14 +72,13 @@ int main()
     */
     for (int i = 2; i < dt; i++) 
     {
-        // Loop over spatial steps
-        for (int k = 1; k < kmax; k++) 
-        {
-            Q[k][i + 1] = Q[k][i] + h * (alpha * (P[k - 1][i] - P[k][i]) - beta * Q[k][i] * abs(Q[k][i]));
-
-            // DO NOT calculate pressure for the last element such as it is given by default
-            if (k != kmax - 1) 
-                P[k][i + 1] = P[k][i - 2] + h * (gamma * (Q[k][i] - Q[k + 1][i]));
+        // Loop over spatial steps for flow
+        for (int k = 1; k < kmax; k++) {
+            Q[i + 1][k] = Q[i][k] + h * (alpha * (P[i][k - 1] - P[i][k]) - beta * Q[i][k] * abs(Q[i][k]));
+        }
+        // Loop over steps for pressure, DO NOT calculate pressure for the last element as it is given as a boundary condition
+        for (int k = 1; k < kmax - 1; k++)  {
+            P[i + 1][k] = P[k][i - 2] + h * (gamma * (Q[i][k] - Q[i][k + 1]));
         }
     }
     
@@ -81,7 +91,7 @@ int main()
         std::cout << i << ": ";
    
         for(int k = 0; k < 10; k++)
-            std::cout << std::setw(10) << Q[i][k];
+            std::cout << std::setw(10) << Q[k][i];
         std::cout << std::endl;
     }
 
@@ -94,7 +104,7 @@ int main()
         std::cout << i << ": ";
 
         for(int k = 0; k < 10; k++)
-            std::cout << std::setw(10) << Q[i][dt - 10 + k];
+            std::cout << std::setw(10) << Q[dt - 10 + k][i];
         std::cout << std::endl;
     }
 
