@@ -7,47 +7,53 @@ using namespace std;
 
 int main() 
 {
-    int l = 1925;               // Edge length
-    int dx = 5;                 // Spatial step
-    int kmax = l / dx;          // Number of spatial steps
+    const double F = 4.67;
+    const double r = 0.00105;
+    const double rho = 1.255;
+    const double air = 330.22;
+
+    const int l = 1925;               // Edge length
+    const int dx = 40;                // Spatial step
+    const int kmax = l / dx;          // Number of spatial steps
 
     /**
-     * Coefficients alpha and gamma are different for different 
+     * Coefficients alpha beta and gamma are different for different 
      * edges. It depends on the edge's lenght, cross-sectional area etc.
     */
-    double alpha = 0.744;
-    double beta = 0.004;
-    double gamma = 5829;
+    const double alpha = F / (rho * dx);
+    const double beta = (F * r) / rho;
+    const double gamma = (rho * air * air) / (F * dx);
 
     /**
-     * dt   - the number of approximation in Euler method
-     * h    - discretization step in Euler method
-     * 
-     * Those two values work well with all existing steps and give us
-     * result that satisfies the initial condition pretty close.
-     * 
+     * h      - discretization step in Euler method
+     * tmax   - the number of approximation in Euler method
      * Changing of any of them might result in NaN error.
     */
-    int dt = 1000;
-    double h = 0.007;
+    const int tmax = 100000;
+    const double h = 0.001;
 
-
-    std::cout << "--------------------------------------------------" << std::endl;
-    std::cout << "Simulation parameters" << std::endl;
-    std::cout << "--------------------------------------------------" << std::endl;
-    std::cout << "l:    " << l << std::endl;
-    std::cout << "dx:   " << dx << std::endl;
-    std::cout << "kmax: " << kmax << std::endl;
-    std::cout << "dt:   " << dt << std::endl;
-    std::cout << "h:    " << h << std::endl;
-    std::cout << "--------------------------------------------------" << std::endl;
+    auto default_out = cout.flags();
+    cout << "--------------------------------------------------" << endl;
+    cout << "Simulation parameters" << endl;
+    cout << "--------------------------------------------------" << endl;
+    cout.flags(std::ios::left);
+    cout << setw(10) << "l:" << setw(10) << l << setw(5) << "|";
+    cout << setw(10) << "alpha: " << alpha << setw(10) << endl;
+    cout << setw(10) << "dx:" << setw(10) << dx << setw(5) << "|";
+    cout << setw(10) << "beta: " << beta << setw(10) << endl;
+    cout << setw(10) << "kmax:" << setw(10) << std::setw(10) << kmax << setw(5) << "|";
+    cout << setw(10) << "gamma: " << gamma << setw(10) << endl;
+    cout << setw(10) << "tmax:" << setw(10) << std::setw(10) << tmax << setw(5) << "|" << endl;
+    cout << setw(10) << "h:" << setw(10) << std::setw(10) << h << setw(5) << "|" << endl;
+    cout << "--------------------------------------------------" << endl;
+    cout.flags(default_out);
 
     // Stores the approximated values for each step 
-    double Q[dt][kmax];
-    double P[dt][kmax];
+    auto Q = new double[tmax][kmax];
+    auto P = new double[tmax][kmax];
 
     // Prepare initial condition
-    for (int i = 0; i < dt; i++) 
+    for (int i = 0; i < tmax; i++) 
     {
         // Loop over spatial steps
         for (int k = 0; k < kmax; k++) 
@@ -66,47 +72,25 @@ int main()
     }
 
     /**
-     * In fact, we have two 'steps'. The first step represents the approximation 
-     * criteria in Euler's method (dt) and the second one represents the actual
+     * In fact, we have two steps. The first step represents the approximation 
+     * criteria in Euler's method (tmax) and the second one represents the actual
      * spatial step along the edge (dx).
     */
-    for (int i = 2; i < dt; i++) 
+    for (int i = 2; i < tmax; i++) 
     {
         // Loop over spatial steps for flow
-        for (int k = 1; k < kmax; k++) {
+        for (int k = 1; k < kmax; k++)
             Q[i + 1][k] = Q[i][k] + h * (alpha * (P[i][k - 1] - P[i][k]) - beta * Q[i][k] * abs(Q[i][k]));
-        }
+
         // Loop over steps for pressure, DO NOT calculate pressure for the last element as it is given as a boundary condition
-        for (int k = 1; k < kmax - 1; k++)  {
-            P[i + 1][k] = P[k][i - 2] + h * (gamma * (Q[i][k] - Q[i][k + 1]));
-        }
-    }
-    
-    // Print out the first 10 values of Q for each spatial step
-    std::cout << "FIRST 10 VALUES\n";
-    for(int i = 0; i < kmax; i++)
-    {
-        std::cout.width(5);
-        std::cout.flags(std::ios::left);
-        std::cout << i << ": ";
-   
-        for(int k = 0; k < 10; k++)
-            std::cout << std::setw(10) << Q[k][i];
-        std::cout << std::endl;
+        for (int k = 1; k < kmax - 1; k++)
+            P[i + 1][k] = P[i - 2][k] + h * (gamma * (Q[i][k] - Q[i][k + 1]));
     }
 
-    // Print out the last 10 values of Q for each spatial step
-    std::cout << "LAST 10 VALUES:\n";
-    for(int i = 1; i < kmax; i++)
-    {
-        std::cout.width(5);
-        std::cout.flags(std::ios::left);
-        std::cout << i << ": ";
-
-        for(int k = 0; k < 10; k++)
-            std::cout << std::setw(10) << Q[dt - 10 + k][i];
-        std::cout << std::endl;
-    }
+    cout << "First 10 spatial steps of last temporal step\n";
+    cout << "[1 - 10][" << tmax - 1 << "]";
+    for(int i = 0; i < 10; i++)
+        printf("%10.3f", Q[tmax - 1][i + 1]); 
 
     return 0;
 }
