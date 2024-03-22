@@ -29,8 +29,8 @@ int main()
      * tmax   - the number of approximation in Euler method
      * Changing of any of them might result in NaN error.
     */
-    const int tmax = 100000;
-    const double h = 0.001;
+    const int tmax = 8000000;
+    const double h = 0.0001;
 
     auto default_out = cout.flags();
     cout << "--------------------------------------------------" << endl;
@@ -84,7 +84,7 @@ int main()
 
         // Loop over steps for pressure, DO NOT calculate pressure for the last element as it is given as a boundary condition
         for (int k = 1; k < kmax - 1; k++)
-            P[i + 1][k] = P[i - 2][k] + h * (gamma * (Q[i][k] - Q[i][k + 1]));
+            P[i + 1][k] = P[i][k] + h * (gamma * (Q[i][k] - Q[i][k + 1]));
     }
 
     cout << "First 10 spatial steps of last temporal step\n";
