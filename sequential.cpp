@@ -55,8 +55,8 @@ int main()
     const int t_step = tmax;
     const int s_step = kmax;
 
-    auto Q = new double[t_step][s_step] {0.0};
-    auto P = new double[t_step][s_step] {0.0};
+    auto Q = new double[t_step][s_step] {{0.0}};
+    auto P = new double[t_step][s_step] {{0.0}};
 
     // Helper function to get k depending on the Q and P context
     auto ind = [](int offset = 0, int k) { return k - offset; };
@@ -88,7 +88,7 @@ int main()
     printf("\n");
 
 #ifdef DEBUG
-    // Generate text files for gnu plot
+    // Generate text files for gnuplot
     FILE *Q_plot_s = fopen("Q_plots_s.txt", "w+");
     FILE *Q_plot_m = fopen("Q_plots_m.txt", "w+");
     FILE *Q_plot_e = fopen("Q_plots_e.txt", "w+");
@@ -108,7 +108,13 @@ int main()
         fprintf(Q_plot_e, "%d %f\n", int(i * h), Q[i][s_step - 1]);
         fprintf(P_plot_e, "%d %f\n", int(i * h), P[i][s_step - 1]);
     }
-    
+
+    fclose(Q_plot_s);
+    fclose(Q_plot_m);
+    fclose(Q_plot_e);
+    fclose(P_plot_s);
+    fclose(P_plot_m);
+    fclose(P_plot_e);
 #endif
     return 0;
 }
