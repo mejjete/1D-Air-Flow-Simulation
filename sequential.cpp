@@ -87,44 +87,28 @@ int main()
         printf("%10.3f", Q[t_step - 1][i + 1]); 
     printf("\n");
 
-#ifdef DEBUG    
-    FILE *gnuplot = popen("gnuplot -persist", "w");
-    if (gnuplot == NULL) 
+#ifdef DEBUG
+    // Generate text files for gnu plot
+    FILE *Q_plot_s = fopen("Q_plots_s.txt", "w+");
+    FILE *Q_plot_m = fopen("Q_plots_m.txt", "w+");
+    FILE *Q_plot_e = fopen("Q_plots_e.txt", "w+");
+
+    FILE *P_plot_s = fopen("P_plots_s.txt", "w+");
+    FILE *P_plot_m = fopen("P_plots_m.txt", "w+");
+    FILE *P_plot_e = fopen("P_plots_e.txt", "w+");
+
+    for (int i = 1; i < t_step; i += 10)
     {
-        perror("Error opening pipe to GNU Plot");
-        return -1;
+        fprintf(Q_plot_s, "%d %f\n", int(i * h), Q[i][1]);
+        fprintf(P_plot_s, "%d %f\n", int(i * h), P[i][1]);
+
+        fprintf(Q_plot_m, "%d %f\n", int(i * h), Q[i][s_step / 2]);
+        fprintf(P_plot_m, "%d %f\n", int(i * h), P[i][s_step / 2]);  
+
+        fprintf(Q_plot_e, "%d %f\n", int(i * h), Q[i][s_step - 1]);
+        fprintf(P_plot_e, "%d %f\n", int(i * h), P[i][s_step - 1]);
     }
-
-    fprintf(gnuplot, "set terminal png size 1920,1080\n");
-    fprintf(gnuplot, "set output 'Q.png'\n");
-
-    fprintf(gnuplot, "set xlabel 'Time (seconds)'\n");
-    fprintf(gnuplot, "set ylabel 'Q (flow)'\n");
-
-    std::string plot_option = "plot '-' with lines title ";
-    plot_option += "'Step: " + std::to_string(s_step - 1) + "' linecolor rgb 'red',";
-    plot_option += "'-' with line title 'Step: " + std::to_string(s_step / 2) + "' linecolor rgb 'blue',"; 
-    plot_option += "'-' with line title 'Step: " + std::to_string(1) + "' linecolor rgb 'green'\n"; 
-    fprintf(gnuplot, plot_option.c_str());
-
-    // Output last step
-    for (int i = 1; i < t_step; i += 10) 
-        fprintf(gnuplot, "%d %f\n", int(i * h), Q[i][s_step - 1]);
-    fprintf(gnuplot, "e\n");
-
-    // Output middle step
-    for (int i = 1; i < t_step; i += 10) 
-        fprintf(gnuplot, "%d %f\n", int(i * h), Q[i][s_step / 2]);
-    fprintf(gnuplot, "e\n");
-
-    // Output first step
-    for (int i = 1; i < t_step; i += 10) 
-        fprintf(gnuplot, "%d %f\n", int(i * h), Q[i][1]);
-    fprintf(gnuplot, "e\n");
-
-    if (pclose(gnuplot) == -1) 
-        perror("Error closing pipe to GNU Plot");
+    
 #endif
-
     return 0;
 }
