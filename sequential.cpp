@@ -22,12 +22,14 @@ int main(int argc, char **argv)
     boost::property_tree::ptree edge;
     boost::property_tree::read_json(argv[1], edge);
 
+    const std::string edge_name = edge.get<std::string>("name");
     const int length = edge.get<int>("length");
     const int dx = edge.get<int>("dx");
     const double alpha = edge.get<double>("alpha");
     const double beta = edge.get<double>("beta");
     const double gamma = edge.get<double>("gamma");
     const double h = edge.get<double>("h");
+    const double P_init = edge.get<double>("P_init");
     const int t_step = edge.get<int>("t_step");
     const int s_step = length / dx;
 
@@ -42,20 +44,21 @@ int main(int argc, char **argv)
     cout << setw(10) << "beta: " << beta << setw(10) << endl;
     cout << setw(10) << "M:" << setw(10) << std::setw(10) << s_step << setw(5) << "|";
     cout << setw(10) << "gamma: " << gamma << setw(10) << endl;
-    cout << setw(10) << "time:" << setw(10) << std::setw(10) << t_step << setw(5) << "|" << endl;
+    cout << setw(10) << "time:" << setw(10) << std::setw(10) << t_step << setw(5) << "|";
+    cout << setw(10) << "P init: " << P_init << setw(10) << endl;
     cout << setw(10) << "dt:" << setw(10) << std::setw(10) << h << setw(5) << "|" << endl;
     cout << "--------------------------------------------------" << endl;
     cout.flags(default_out);
 
 #ifdef DEBUG     
     // Generate text files for gnuplot
-    FILE *Q_plot_s = fopen("Q_plots_s.txt", "w+");
-    FILE *Q_plot_m = fopen("Q_plots_m.txt", "w+");
-    FILE *Q_plot_e = fopen("Q_plots_e.txt", "w+");
+    FILE *Q_plot_s = fopen((edge_name + "_Qplots_s.txt").c_str(), "w+");
+    FILE *Q_plot_m = fopen((edge_name + "_Qplots_m.txt").c_str(), "w+");
+    FILE *Q_plot_e = fopen((edge_name + "_Qplots_e.txt").c_str(), "w+");
 
-    FILE *P_plot_s = fopen("P_plots_s.txt", "w+");
-    FILE *P_plot_m = fopen("P_plots_m.txt", "w+");
-    FILE *P_plot_e = fopen("P_plots_e.txt", "w+");
+    FILE *P_plot_s = fopen((edge_name + "_Pplots_s.txt").c_str(), "w+");
+    FILE *P_plot_m = fopen((edge_name + "_Pplots_m.txt").c_str(), "w+");
+    FILE *P_plot_e = fopen((edge_name + "_Pplots_e.txt").c_str(), "w+");
 #endif
 
     /**
@@ -71,7 +74,7 @@ int main(int argc, char **argv)
         P[i] = new double[s_step];
 
         // Set initial condition for pressure
-        P[i][s_step - 1] = -202.0;
+        P[i][s_step - 1] = P_init;
     }
     
     /**
@@ -101,7 +104,6 @@ int main(int argc, char **argv)
                     fprintf(Q_plot_e, "%.3f %f\n", i * h, Q[i_next][k]);
             }
             #endif 
-
         }
 
         // Loop over steps for pressure, DO NOT calculate pressure for the last element as it is given as a boundary condition
@@ -124,7 +126,7 @@ int main(int argc, char **argv)
     }
 
     printf("Q[%d][%d]: %.3f\n", t_step - 1, s_step - 1, Q[1][s_step - 1]);
-    printf("P[%d][%d]: %.3f\n", t_step - 1, s_step - 1, P[1][s_step - 1]);
+    printf("P[%d][%d]: %.3f\n", t_step - 1, s_step - 2, P[1][s_step - 2]);
 
 #ifdef DEBUG
     fclose(Q_plot_s);
