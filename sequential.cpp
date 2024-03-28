@@ -6,93 +6,48 @@
 #include <omp.h>
 #include <boost/circular_buffer.hpp>
 #include <boost/container/vector.hpp>
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/json_parser.hpp>
 
-int main() 
+int main(int argc, char **argv) 
 {
     using namespace std;
 
-    const double F = 4.67;
-    const double r = 0.00105;
-    const double rho = 1.255;
-    const double air = 330.22;
+    if(argc <= 1)
+    {
+        std::cerr << "No input file exist\n";
+        exit(EXIT_FAILURE);
+    }
 
-    const int l = 1925;               // Edge length
-    const int dx = 40;                // Spatial step
-    const int kmax = l / dx;          // Number of spatial steps
+    boost::property_tree::ptree edge;
+    boost::property_tree::read_json(argv[1], edge);
 
-    /**
-     * Coefficients alpha beta and gamma are different for different 
-     * edges. It depends on the edge's lenght, cross-sectional area etc.
-    */
-    const double alpha = 0.093;
-    const double beta = 0.004;
-    const double gamma = 728.6;
-
-    /**
-     * h      - discretization step in Euler method
-     * tmax   - the number of approximation in Euler method
-     * Simulation duration time = tmax * h
-    */
-    const int tmax = 1800000;
-    const double h = 0.0001;
+    const int length = edge.get<int>("length");
+    const int dx = edge.get<int>("dx");
+    const double alpha = edge.get<double>("alpha");
+    const double beta = edge.get<double>("beta");
+    const double gamma = edge.get<double>("gamma");
+    const double h = edge.get<double>("h");
+    const int t_step = edge.get<int>("t_step");
+    const int s_step = length / dx;
 
     auto default_out = cout.flags();
     cout << "--------------------------------------------------" << endl;
     cout << "Simulation parameters" << endl;
     cout << "--------------------------------------------------" << endl;
     cout.flags(std::ios::left);
-    cout << setw(10) << "l:" << setw(10) << l << setw(5) << "|";
+    cout << setw(10) << "l:" << setw(10) << length << setw(5) << "|";
     cout << setw(10) << "alpha: " << alpha << setw(10) << endl;
     cout << setw(10) << "dx:" << setw(10) << dx << setw(5) << "|";
     cout << setw(10) << "beta: " << beta << setw(10) << endl;
-    cout << setw(10) << "kmax:" << setw(10) << std::setw(10) << kmax << setw(5) << "|";
+    cout << setw(10) << "M:" << setw(10) << std::setw(10) << s_step << setw(5) << "|";
     cout << setw(10) << "gamma: " << gamma << setw(10) << endl;
-    cout << setw(10) << "tmax:" << setw(10) << std::setw(10) << tmax << setw(5) << "|" << endl;
-    cout << setw(10) << "h:" << setw(10) << std::setw(10) << h << setw(5) << "|" << endl;
+    cout << setw(10) << "time:" << setw(10) << std::setw(10) << t_step << setw(5) << "|" << endl;
+    cout << setw(10) << "dt:" << setw(10) << std::setw(10) << h << setw(5) << "|" << endl;
     cout << "--------------------------------------------------" << endl;
     cout.flags(default_out);
 
 #ifdef DEBUG     
-    const int t_step = tmax;
-    const int s_step = kmax;
-#else
-    const int t_step = 2;
-    const int s_step = kmax;
-#endif
-
-    auto Q = new double[t_step][s_step] {{0.0}};
-    auto P = new double[t_step][s_step] {{0.0}};
-
-    // Set initial condition for pressure
-    for(int i = 0; i < t_step; i++)
-        P[i][s_step - 1] = -202.0;
-    
-    /**
-     * In fact, we have two steps. The first step represents the approximation 
-     * criteria in Euler's method (i) and the second one represents the actual
-     * spatial step along the edge (k).
-    */
-    for (int i = 0; i < tmax; i++) 
-    {
-        int i_next = (i + 1) % t_step;
-        int i_curr = i % t_step;
-
-        // Loop over spatial steps for flow
-        for (int k = 1; k < s_step; k++)
-            Q[i_next][k] = Q[i_curr][k] + h * (alpha * (P[i_curr][k - 1] - P[i_curr][k]) - beta * Q[i_curr][k] * abs(Q[i_curr][k]));
-
-        // Loop over steps for pressure, DO NOT calculate pressure for the last element as it is given as a boundary condition
-        for (int k = 1; k < s_step - 1; k++)
-            P[i_next][k] = P[i_curr][k] + h * (gamma * (Q[i_curr][k] - Q[i_curr][k + 1]));  
-    }
-
-    cout << "First 10 spatial steps of last temporal step\n";
-    cout << "[1 - 10][" << tmax - 1 << "]";
-    for(int i = 0; i < 10; i++)
-        printf("%10.3f", Q[t_step - 1][i + 1]); 
-    printf("\n");
-
-#ifdef DEBUG
     // Generate text files for gnuplot
     FILE *Q_plot_s = fopen("Q_plots_s.txt", "w+");
     FILE *Q_plot_m = fopen("Q_plots_m.txt", "w+");
@@ -101,19 +56,77 @@ int main()
     FILE *P_plot_s = fopen("P_plots_s.txt", "w+");
     FILE *P_plot_m = fopen("P_plots_m.txt", "w+");
     FILE *P_plot_e = fopen("P_plots_e.txt", "w+");
+#endif
 
-    for (int i = 1; i < t_step; i += 10)
+    /**
+     *  Q - air flow; P - pressure
+     *  They represent circular buffer where rows are organized in a circular maner
+    */
+    double **Q = new double*[2];
+    double **P = new double*[2]; 
+
+    for(int i = 0; i < 2; i++)
     {
-        fprintf(Q_plot_s, "%d %f\n", int(i * h), Q[i][1]);
-        fprintf(P_plot_s, "%d %f\n", int(i * h), P[i][1]);
+        Q[i] = new double[s_step];
+        P[i] = new double[s_step];
 
-        fprintf(Q_plot_m, "%d %f\n", int(i * h), Q[i][s_step / 2]);
-        fprintf(P_plot_m, "%d %f\n", int(i * h), P[i][s_step / 2]);  
+        // Set initial condition for pressure
+        P[i][s_step - 1] = -202.0;
+    }
+    
+    /**
+     * In fact, we have two steps. The first step represents the approximation 
+     * criteria in Euler's method (i) and the second one represents the actual
+     * spatial step along the edge (k).
+    */
+    for (int i = 0; i < t_step; i++) 
+    {
+        // As soon as we have circular buffer, we need to adjust pointers at each iteration
+        int i_next = (i + 1) % 2;
+        int i_curr = i % 2;
 
-        fprintf(Q_plot_e, "%d %f\n", int(i * h), Q[i][s_step - 1]);
-        fprintf(P_plot_e, "%d %f\n", int(i * h), P[i][s_step - 1]);
+        // Loop over spatial steps for flow
+        for (int k = 1; k < s_step; k++)
+        {
+            Q[i_next][k] = Q[i_curr][k] + h * (alpha * (P[i_curr][k - 1] - P[i_curr][k]) - beta * Q[i_curr][k] * abs(Q[i_curr][k]));
+
+            #ifdef DEBUG
+            if(i % 10 == 0)
+            {
+                if(k == 1)
+                    fprintf(Q_plot_s, "%.3f %f\n", i * h, Q[i_next][k]);
+                else if(k == s_step / 2)
+                    fprintf(Q_plot_m, "%.3f %f\n", i * h, Q[i_next][k]);
+                else if(k == s_step - 1)
+                    fprintf(Q_plot_e, "%.3f %f\n", i * h, Q[i_next][k]);
+            }
+            #endif 
+
+        }
+
+        // Loop over steps for pressure, DO NOT calculate pressure for the last element as it is given as a boundary condition
+        for (int k = 1; k < s_step - 1; k++)
+        {
+            P[i_next][k] = P[i_curr][k] + h * (gamma * (Q[i_curr][k] - Q[i_curr][k + 1]));
+            
+            #ifdef DEBUG
+            if(i % 10 == 0)
+            {
+                if(k == 1)
+                    fprintf(P_plot_s, "%.3f %f\n", i * h, P[i_next][k]);
+                else if(k == s_step / 2)
+                    fprintf(P_plot_m, "%.3f %f\n", i * h, P[i_next][k]);  
+                else if(k == s_step - 2)
+                    fprintf(P_plot_e, "%.3f %f\n", i * h, P[i_next][k]);
+            }
+            #endif 
+        }
     }
 
+    printf("Q[%d][%d]: %.3f\n", t_step - 1, s_step - 1, Q[1][s_step - 1]);
+    printf("P[%d][%d]: %.3f\n", t_step - 1, s_step - 1, P[1][s_step - 1]);
+
+#ifdef DEBUG
     fclose(Q_plot_s);
     fclose(Q_plot_m);
     fclose(Q_plot_e);
@@ -121,5 +134,12 @@ int main()
     fclose(P_plot_m);
     fclose(P_plot_e);
 #endif
+    
+    for(int i = 0; i < 2; i++)
+    {
+        delete[] Q[i];
+        delete[] P[i];
+    }
+
     return 0;
 }
