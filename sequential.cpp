@@ -3,6 +3,7 @@
 #include <math.h>
 #include <iomanip>
 #include <string>
+#include <omp.h>
 #include <boost/circular_buffer.hpp>
 #include <boost/container/vector.hpp>
 
@@ -51,15 +52,16 @@ int main()
     cout << "--------------------------------------------------" << endl;
     cout.flags(default_out);
 
-    // Just a thumbs for future use
+#ifdef DEBUG     
     const int t_step = tmax;
     const int s_step = kmax;
+#else
+    const int t_step = 2;
+    const int s_step = kmax;
+#endif
 
     auto Q = new double[t_step][s_step] {{0.0}};
     auto P = new double[t_step][s_step] {{0.0}};
-
-    // Helper function to get k depending on the Q and P context
-    auto ind = [](int offset = 0, int k) { return k - offset; };
 
     // Set initial condition for pressure
     for(int i = 0; i < t_step; i++)
@@ -70,15 +72,18 @@ int main()
      * criteria in Euler's method (i) and the second one represents the actual
      * spatial step along the edge (k).
     */
-    for (int i = 0; i < t_step; i++) 
+    for (int i = 0; i < tmax; i++) 
     {
+        int i_next = (i + 1) % t_step;
+        int i_curr = i % t_step;
+
         // Loop over spatial steps for flow
         for (int k = 1; k < s_step; k++)
-            Q[i + 1][k] = Q[i][k] + h * (alpha * (P[i][k - 1] - P[i][k]) - beta * Q[i][k] * abs(Q[i][k]));
+            Q[i_next][k] = Q[i_curr][k] + h * (alpha * (P[i_curr][k - 1] - P[i_curr][k]) - beta * Q[i_curr][k] * abs(Q[i_curr][k]));
 
         // Loop over steps for pressure, DO NOT calculate pressure for the last element as it is given as a boundary condition
         for (int k = 1; k < s_step - 1; k++)
-            P[i + 1][k] = P[i][k] + h * (gamma * (Q[i][k] - Q[i][k + 1]));
+            P[i_next][k] = P[i_curr][k] + h * (gamma * (Q[i_curr][k] - Q[i_curr][k + 1]));  
     }
 
     cout << "First 10 spatial steps of last temporal step\n";
