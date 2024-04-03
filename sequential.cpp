@@ -42,11 +42,11 @@ int main(int argc, char **argv)
     cout << setw(10) << "alpha: " << alpha << setw(10) << endl;
     cout << setw(10) << "dx:" << setw(10) << dx << setw(5) << "|";
     cout << setw(10) << "beta: " << beta << setw(10) << endl;
-    cout << setw(10) << "M:" << setw(10) << std::setw(10) << s_step << setw(5) << "|";
+    cout << setw(10) << "M:" << setw(10) << s_step << setw(5) << "|";
     cout << setw(10) << "gamma: " << gamma << setw(10) << endl;
-    cout << setw(10) << "time:" << setw(10) << std::setw(10) << t_step << setw(5) << "|";
+    cout << setw(10) << "time:" << setw(10) << t_step << setw(5) << "|";
     cout << setw(10) << "P init: " << P_init << setw(10) << endl;
-    cout << setw(10) << "dt:" << setw(10) << std::setw(10) << h << setw(5) << "|" << endl;
+    cout << setw(10) << "dt:" << setw(10) << h << setw(5) << "|" << endl;
     cout << "--------------------------------------------------" << endl;
     cout.flags(default_out);
 
