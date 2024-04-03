@@ -1,14 +1,16 @@
 Q_s="${1}_Qplots_s.txt"
 Q_m="${1}_Qplots_m.txt"
 Q_e="${1}_Qplots_e.txt"
+Q_out="${1}_Q.png"
 
 P_s="${1}_Pplots_s.txt"
 P_m="${1}_Pplots_m.txt"
 P_e="${1}_Pplots_e.txt"
+P_out="${1}_P.png"
 
 gnuplot << EOF
 set terminal png size 1920,1080
-set output "Q.png"
+set output "$Q_out"
 
 set xlabel "Time (seconds)"
 set ylabel "Q (flow)"
@@ -18,7 +20,7 @@ EOF
 
 gnuplot << EOF
 set terminal png size 1920,1080
-set output "P.png"
+set output "$P_out"
 
 set xlabel "Time (seconds)"
 set ylabel "P (pressure)"
