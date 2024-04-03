@@ -31,7 +31,7 @@ int main(int argc, char **argv)
     const double h = edge.get<double>("h");
     const double P_init = edge.get<double>("P_init");
     const int t_step = edge.get<int>("t_step");
-    const int s_step = length / dx;
+    const int s_step = (int)(ceil((double)length / (double)dx));
 
     auto default_out = cout.flags();
     cout << "--------------------------------------------------" << endl;
