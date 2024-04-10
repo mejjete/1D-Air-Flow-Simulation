@@ -1,0 +1,85 @@
+{
+    "name" : "TestNetwork",
+    "vertices" : 6,
+    "init_vert" : 5,
+    "edges" : 8,
+    "init_pressure" : -4100.0,
+    "t_step" : 1800000,
+    "h" : 0.0001,
+    "dx" : 40,
+    "edge" : 
+    [   
+        {
+            "id" : 0,
+            "head" : 0,
+            "tail" : 1,
+            "length" : 800,
+            "alpha" : 0.13,
+            "beta" : 0.00252,
+            "gamma": 523.6
+        },
+        {
+            "id" : 1,
+            "head" : 1,
+            "tail" : 2,
+            "length" : 150,
+            "alpha" : 0.13,
+            "beta" : 0.00252,
+            "gamma": 523.6
+        },
+        {
+            "id" : 2,
+            "head" : 2,
+            "tail" : 3,
+            "length" : 1925,
+            "alpha" : 0.093,
+            "beta" : 0.004,
+            "gamma": 728.6
+        },
+        {
+            "id" : 3,
+            "head" : 2,
+            "tail" : 3,
+            "length" : 1410,
+            "alpha" : 0.12,
+            "beta" : 0.009,
+            "gamma": 569.1
+        },
+        {
+            "id" : 4,
+            "head" : 1,
+            "tail" : 4,
+            "length" : 1720,
+            "alpha" : 0.09,
+            "beta" : 0.004,
+            "gamma": 756.2
+        },
+        {
+            "id" : 5,
+            "head" : 1,
+            "tail" : 4,
+            "length" : 934,
+            "alpha" : 0.1,
+            "beta" : 0.0055,
+            "gamma": 684.7
+        },
+        {
+            "id" : 6,
+            "head" : 3,
+            "tail" : 4,
+            "length" : 150,
+            "alpha" : 0.13,
+            "beta" : 0.00252,
+            "gamma": 523.6
+        },
+        {
+            "id" : 7,
+            "head" : 4,
+            "tail" : 5,
+            "length" : 650,
+            "alpha" : 0.13,
+            "beta" : 0.00252,
+            "gamma": 523.6
+        }
+    ]
+}
