@@ -48,10 +48,10 @@ public:
         return P[i_next][k] = P[i_curr][k] + h * (gamma * (Q[i_curr][k] - Q[i_curr][k + 1]));
     }
 
-    void setInitP(double P_init) 
-    { 
-        P[0][steps - 1] = P_init;
-        P[1][steps - 1] = P_init; 
+    void setInitP(int t_step, double P_init) 
+    {
+        int i_curr = t_step % 2;
+        P[i_curr][steps - 1] = P_init; 
     }
 
     std::vector<double> getLastQ() const { return std::vector<double>( {Q[1][1], Q[1][steps / 2], Q[1][steps - 1]}); };
@@ -70,18 +70,19 @@ private:
     // Also a circular buffer that describes pressure for 2 timesteps 
     double P[2];
     double h;
+    double gamma;
 
-    // Registry object that contains incoming and outocming air flows for further adaptation
+    // Registry object that contains incoming and outcoming air flows for further adaptation
     std::vector<double> regi;
 
 public:
-    VertexProperty() : h(0), regi(0) 
+    VertexProperty() : h(0), regi(0), gamma(0)
     {
         P[0] = 0.0;
         P[1] = 0.0;
     };
 
-    VertexProperty(double hh, double p) : h(hh)
+    VertexProperty(double hh, double p) : h(hh), gamma(0)
     {
         P[0] = p;
         P[1] = p;
@@ -93,21 +94,28 @@ public:
      *  current (pressure) entering a junction is equal to a sum of current (pressure)
      *  leaving the junction.
     */
-    double adapt(int t_step, double gamma)
+    double adapt(int t_step)
     {
         // Pressure calculation 
         int i_next = (t_step + 1) % 2;
         int i_curr = t_step % 2;
-        double resQ;
+        double resQ = 0.0;
 
         for(int i = 0; i < regi.size(); i++)
             resQ += regi[i];
         
+        double locker = 1.0;
         regi.clear();
-        return P[i_next] = P[i_curr] + h * (gamma * resQ);
+
+        if(P[i_curr] == 0.0 && resQ == 0.0)
+            locker = 0.0;
+
+        return P[i_next] = P[i_curr] + h * (gamma * resQ) * locker;
     };
 
-    void addQ(double d) { regi.push_back(d); }
+    void addQ(double d) { regi.push_back(d); };
+    void setGamma(double g) { gamma = g; };
+    double getGamma() const { return gamma; };
     auto getP(int t_step) const { return P[t_step % 2]; };
 };
 

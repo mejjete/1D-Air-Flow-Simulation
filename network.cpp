@@ -107,8 +107,25 @@ int main(int argc, char **argv)
         total_edges++;
     }
 
+    using EdgeIter = typename boost::graph_traits<Graph>::edge_iterator;
+    using VertexIter = typename boost::graph_traits<Graph>::vertex_iterator;
+
     EdgePropertyMap edge_map = get(edge_bundle, network);
     VertexPropertyMap vertex_map = get(vertex_bundle, network);
+
+    /**
+     *  Each vertex has some number of incoming edges. For a given vertex, set the gamma that 
+     *  is biggest among incoming edges. 
+    */
+    for(std::pair<EdgeIter, EdgeIter> iter = edges(network); iter.first != iter.second; ++iter.first)
+    {
+        auto tar_vert = target(*iter.first, network);
+        EdgeProperty &edge = network[*iter.first];
+        VertexProperty &vertex = network[tar_vert];
+
+        if(edge.getGamma() > vertex.getGamma())
+            vertex.setGamma(edge.getGamma());
+    }
 
     if(total_edges != total_edg)
     {
@@ -121,6 +138,16 @@ int main(int argc, char **argv)
     std::ofstream dotfile("TestNetwork.dot");
     write_graphviz(dotfile, network);
     std::cout << "Graph visualization exported to TestNetwork.dot" << std::endl;
+    
+    std::ofstream edgefile("TestNetwork_Vertices.txt");
+    edgefile << "Vertex set: " << std::endl;
+
+    for(auto iter = vertices(network); iter.first != iter.second; ++iter.first)
+    {
+        VertexProperty &vertex = vertex_map[*iter.first];
+        edgefile << "Gamma: " << vertex.getGamma() << endl;
+    }
+    std::cout << "Vertex information exported to TestNetwork_Vertices.txt" << std::endl;
     #endif 
 
 
@@ -137,9 +164,6 @@ int main(int argc, char **argv)
      *  (vertices) according to pressure in neighboring points (vertices).
     */
 
-
-    using EdgeIter = typename boost::graph_traits<Graph>::edge_iterator;
-    using VertexIter = typename boost::graph_traits<Graph>::vertex_iterator;
 
     #ifdef DEBUG
     std::vector<EdgeDebug> edge_debug;
@@ -163,7 +187,7 @@ int main(int argc, char **argv)
             double init = network[tar_vrt_desc].getP(i);
             
             EdgeProperty &edge = edge_map[*et.first];
-            edge.setInitP(init);
+            edge.setInitP(i, init);
             int s_step = edge.getSteps();
 
             /*************************************************************/
@@ -208,7 +232,11 @@ int main(int argc, char **argv)
         for(auto vt = vertices(network); vt.first != vt.second; ++vt.first)
         {
             VertexProperty &vert = vertex_map[*vt.first];
-            // vert.adapt(i, );
+
+            // Do not perform adaptation for initial pressure, because it is a boundary condition 
+            if(vert.getP(0) == P_init)
+                continue; 
+            vert.adapt(i);
         }
     }
 
