@@ -3,7 +3,7 @@
 arg="$1"
 number=""
 # Check if the argument starts with "E" and has more than one character
-if [[ $arg =~ ^E([0-9]+)$ ]]; then
+if [[ $arg =~ ^E([0-9]+)* ]]; then
     number="${BASH_REMATCH[1]}"
 else
     echo "Invalid format: $arg"
