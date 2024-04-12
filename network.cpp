@@ -234,7 +234,7 @@ int main(int argc, char **argv)
             VertexProperty &vert = vertex_map[*vt.first];
 
             // Do not perform adaptation for initial pressure, because it is a boundary condition 
-            if(vert.getP(0) == P_init)
+            if(vert.getP(i) == P_init)
                 continue; 
             vert.adapt(i);
         }
