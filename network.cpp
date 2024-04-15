@@ -184,33 +184,51 @@ int main(int argc, char **argv)
         for(std::pair<EdgeIter, EdgeIter> et = edges(network); et.first != et.second; ++et.first)
         {
             auto tar_vrt_desc = target(*et.first, network);
-            double init = network[tar_vrt_desc].getP(i);
+            auto src_vrt_desc = source(*et.first, network);
             
+            double target_pressure = network[tar_vrt_desc].getP(i);
+            double source_pressure = network[src_vrt_desc].getP(i);
+
+            /**
+             *  Pressure initialization occurs at every timestep for each edge.
+             *  Edges take pressure from source vertex at the start of simulation
+             *  and commits last pressure to a target vertex when all calculations for edge 
+             *  is done. This is the way they communicate via vertex pressure.
+            */
             EdgeProperty &edge = edge_map[*et.first];
-            edge.setInitP(i, init);
+            edge.setSourceP(i, source_pressure);
+            edge.setTargetP(i, target_pressure);
+
             int s_step = edge.getSteps();
 
             /*************************************************************/
 
-            // Step 1: take first-step flow and send it to a source vertex
-            double first_flow = edge.calculateQ(i, 1);
-
-            // Step 2: regular loop over spatial steps for flow
-            for(int k = 2; k < s_step - 1; k++)
+            // Loop over spatial steps for flow
+            for(int k = 1; k < s_step; k++)
                 edge.calculateQ(i, k);
-
-            // Step 3: take last-step flow and send it to a target vertex
-            double last_flow = edge.calculateQ(i, s_step - 1);
 
             // Loop over steps for pressure
             for(int k = 1; k < s_step - 1; k++)
                 edge.calculateP(i, k);
 
             /*************************************************************/
-            
-            auto src_vrt_desc = source(*et.first, network);
-            VertexProperty &source_vertex = vertex_map(src_vrt_desc);
+
             VertexProperty &target_vertex = vertex_map(tar_vrt_desc);
+            VertexProperty &source_vertex = vertex_map(src_vrt_desc);
+
+            auto last_Q = edge.getLastQ(i);
+
+            /**
+             *  Pressure at first spatial step goes to a source vertex with a minus sign because it is 
+             *  outcoming pressure relative to a target vertex.
+             *  Pressure at last spatial step goes to a target vertex as a positive value because it is
+             *  incoming pressure relative to a source vertex.
+             * 
+             *  See Kirchhoff's 1st law.
+            */
+            double first_flow = last_Q[0];
+            double last_flow = last_Q[2];
+
             source_vertex.addQ(-first_flow);
             target_vertex.addQ(last_flow);
 
@@ -247,8 +265,8 @@ int main(int argc, char **argv)
         VertexProperty &vert = vertex_map[tar_vrt_desc];
 
         std::cout << "Edge:" << edge.getId() << std::endl;
-        auto edge_Qres = edge.getLastQ();
-        auto edge_Pres = edge.getLastP();
+        auto edge_Qres = edge.getLastQ(t_step - 1);
+        auto edge_Pres = edge.getLastP(t_step - 1);
 
         cout << "\tLast Q: " << edge_Qres[0] << endl;
         cout << "\tLast P: " << edge_Pres[0] << endl;

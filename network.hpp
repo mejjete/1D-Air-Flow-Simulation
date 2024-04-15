@@ -3,6 +3,7 @@
 #include <string>
 #include <iostream>
 #include <fstream>
+#include <math.h>
 
 // Property map for edge
 class EdgeProperty
@@ -48,14 +49,31 @@ public:
         return P[i_next][k] = P[i_curr][k] + h * (gamma * (Q[i_curr][k] - Q[i_curr][k + 1]));
     }
 
-    void setInitP(int t_step, double P_init) 
+    // Source pressure comes from the source vertex
+    void setSourceP(int t_step, double P_init) 
     {
         int i_curr = t_step % 2;
-        P[i_curr][steps - 1] = P_init; 
+        P[i_curr][0] = P_init; 
     }
 
-    std::vector<double> getLastQ() const { return std::vector<double>( {Q[1][1], Q[1][steps / 2], Q[1][steps - 1]}); };
-    std::vector<double> getLastP() const { return std::vector<double>( {P[1][1], P[1][steps / 2], P[1][steps - 2]}); };
+    // Target pressure comes from the target vertex
+    void setTargetP(int t_step, double P_init)
+    {
+        int i_curr = t_step % 2;
+        P[i_curr][steps - 1] = P_init;
+    }
+
+    std::vector<double> getLastQ(int i = 0) const 
+    { 
+        int i_req = i_req % 2;
+        return std::vector<double>( {Q[i_req][1], Q[i_req][steps / 2], Q[i_req][steps - 1]}); 
+    };
+    
+    std::vector<double> getLastP(int i = 0) const 
+    {
+        int i_req = i % 2; 
+        return std::vector<double>({P[i_req][1], P[i_req][steps / 2], P[i_req][steps - 1]});
+    };
 
     int getSteps() const { return steps; };
     int getLength() const { return length; };
@@ -82,7 +100,7 @@ public:
         P[1] = 0.0;
     };
 
-    VertexProperty(double hh, double p) : h(hh), gamma(0)
+    VertexProperty(double hh, double p) : h(hh), gamma(0), regi(0)
     {
         P[0] = p;
         P[1] = p;
@@ -104,13 +122,8 @@ public:
         for(int i = 0; i < regi.size(); i++)
             resQ += regi[i];
         
-        double locker = 1.0;
         regi.clear();
-
-        if(P[i_curr] == 0.0 && resQ == 0.0)
-            locker = 0.0;
-
-        return P[i_next] = P[i_curr] + h * (gamma * resQ) * locker;
+        return P[i_next] = P[i_curr] + h * (gamma * resQ);
     };
 
     void addQ(double d) { regi.push_back(d); };
