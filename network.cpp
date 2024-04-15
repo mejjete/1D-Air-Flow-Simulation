@@ -72,9 +72,9 @@ int main(int argc, char **argv)
          *  pressure set to 0 because it will be evaluated during simulation.
         */
         if(i == init_vert)
-            add_vertex(VertexProperty(h, P_init), network);
+            add_vertex(VertexProperty(i, h, P_init), network);
         else 
-            add_vertex(VertexProperty(h, 0.0), network);
+            add_vertex(VertexProperty(i, h, 0.0), network);
     }
     
     // Initialize each edge and connect it to the vertex
@@ -167,15 +167,28 @@ int main(int argc, char **argv)
 
     #ifdef DEBUG
     std::vector<EdgeDebug> edge_debug;
+    std::vector<VertexDebug> vertex_debug;
+
     auto edge_finder = [&edge_debug](int id) -> typename std::add_lvalue_reference<EdgeDebug>::type
     {
         for(auto &iter : edge_debug)
         {
-            if(iter.getId() == id)
+            if(iter.getID() == id)
                 return iter;
         }
 
-        throw std::runtime_error("Debug array is corrupted\n");
+        throw std::runtime_error("Edge debug array is corrupted\n");
+    };
+
+    auto vertex_finder = [&vertex_debug](int id) -> typename std::add_lvalue_reference<VertexDebug>::type
+    {
+        for(auto &iter : vertex_debug)
+        {
+            if(iter.getID() == id)
+                return iter;
+        }
+
+        throw std::runtime_error("Vertex debug array is corrupted\n");
     };
     #endif
 
@@ -207,7 +220,7 @@ int main(int argc, char **argv)
             for(int k = 1; k < s_step; k++)
                 edge.calculateQ(i, k);
 
-            // Loop over steps for pressure
+            // Loop over spatial steps for pressure
             for(int k = 1; k < s_step - 1; k++)
                 edge.calculateP(i, k);
 
@@ -220,9 +233,9 @@ int main(int argc, char **argv)
 
             /**
              *  Pressure at first spatial step goes to a source vertex with a minus sign because it is 
-             *  outcoming pressure relative to a target vertex.
+             *  outcoming pressure relative to a source vertex.
              *  Pressure at last spatial step goes to a target vertex as a positive value because it is
-             *  incoming pressure relative to a source vertex.
+             *  incoming pressure relative to a target vertex.
              * 
              *  See Kirchhoff's 1st law.
             */
@@ -233,14 +246,14 @@ int main(int argc, char **argv)
             target_vertex.addQ(last_flow);
 
             #ifdef DEBUG
-            // Initialize debug handlers
+            // Initialize edge debug handlers
             if(i == 0)
-                edge_debug.push_back(EdgeDebug("E" + std::to_string(edge.getId()), &edge));
+                edge_debug.push_back(EdgeDebug("E" + std::to_string(edge.getID()), &edge));
 
             // Write down time points for each edge separately
             if(i % 10 == 0) 
             {
-                auto &current_debug = edge_finder(edge.getId());
+                auto &current_debug = edge_finder(edge.getID());
                 current_debug.serialize(i * h);
             }
             #endif
@@ -255,6 +268,19 @@ int main(int argc, char **argv)
             if(vert.getP(i) == P_init)
                 continue; 
             vert.adapt(i);
+
+            #ifdef DEBUG
+            // Initialize vertex debug handlers
+            if(i == 0)
+                vertex_debug.push_back(VertexDebug("V" + std::to_string(vert.getID()), &vert));
+
+            // Write down time points for each vertex separately
+            if(i % 10 == 0) 
+            {
+                auto &curr_vert_debug = vertex_finder(vert.getID());
+                curr_vert_debug.serialize(i * h);
+            }
+            #endif
         }
     }
 
@@ -264,7 +290,7 @@ int main(int argc, char **argv)
         auto tar_vrt_desc = target(*et.first, network);
         VertexProperty &vert = vertex_map[tar_vrt_desc];
 
-        std::cout << "Edge:" << edge.getId() << std::endl;
+        std::cout << "Edge:" << edge.getID() << std::endl;
         auto edge_Qres = edge.getLastQ(t_step - 1);
         auto edge_Pres = edge.getLastP(t_step - 1);
 

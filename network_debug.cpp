@@ -24,3 +24,13 @@ void EdgeDebug::serialize(double time)
     P_plots_m << time << " " << lastP[1] << "\n";
     P_plots_e << time << " " << lastP[2] << "\n";
 }
+
+VertexDebug::VertexDebug(std::string name, VertexProperty *vert) : vertex(vert)
+{
+    V_plots.open(name + "_Pplots.txt");
+}
+
+void VertexDebug::serialize(double time)
+{
+    V_plots << time << " " << vertex->getP(0) << "\n";
+}

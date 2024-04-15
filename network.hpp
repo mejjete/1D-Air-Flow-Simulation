@@ -77,7 +77,7 @@ public:
 
     int getSteps() const { return steps; };
     int getLength() const { return length; };
-    int getId() const { return id; };
+    int getID() const { return id; };
     double getGamma() const { return gamma; };
 };
 
@@ -89,18 +89,19 @@ private:
     double P[2];
     double h;
     double gamma;
+    int id;
 
     // Registry object that contains incoming and outcoming air flows for further adaptation
     std::vector<double> regi;
 
 public:
-    VertexProperty() : h(0), regi(0), gamma(0)
+    VertexProperty() : h(0), regi(0), gamma(0), id(0)
     {
         P[0] = 0.0;
         P[1] = 0.0;
     };
 
-    VertexProperty(double hh, double p) : h(hh), gamma(0), regi(0)
+    VertexProperty(int ID, double hh, double p) : h(hh), gamma(0), regi(0), id(ID)
     {
         P[0] = p;
         P[1] = p;
@@ -130,6 +131,7 @@ public:
     void setGamma(double g) { gamma = g; };
     double getGamma() const { return gamma; };
     auto getP(int t_step) const { return P[t_step % 2]; };
+    int getID() const { return id; };
 };
 
 class EdgeDebug
@@ -148,15 +150,17 @@ private:
 public:
     EdgeDebug(std::string name, EdgeProperty *e);
     void serialize(double time);
-    int getId() const { return edge->getId(); };
+    int getID() const { return edge->getID(); };
 };
 
 class VertexDebug
 {
 private:
-    size_t id;
-    std::ofstream V_plots_s;
+    VertexProperty *vertex;
+    std::ofstream V_plots;
 
 public:
-    VertexDebug(std::string name) {};
+    VertexDebug(std::string name, VertexProperty *vertex);
+    void serialize(double time);
+    int getID() const { return vertex->getID(); };
 };
