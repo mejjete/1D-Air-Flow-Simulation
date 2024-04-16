@@ -1,12 +1,17 @@
 {
     "name" : "TestNetwork",
     "vertices" : 6,
-    "init_vert" : 5,
     "edges" : 8,
-    "init_pressure" : -4100.0,
     "t_step" : 1200000,
     "h" : 0.0001,
     "dx" : 40,
+    "vens" :
+    [
+        {
+            "vertex_id" : 5,
+            "pressure" : -4100
+        }
+    ],
     "edge" : 
     [   
         {

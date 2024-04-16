@@ -10,6 +10,7 @@
 #include <boost/graph/breadth_first_search.hpp>
 #include <boost/graph/graphviz.hpp>
 #include <tuple>
+#include <algorithm>
 #include "network.hpp"
 
 int main(int argc, char **argv)
@@ -30,10 +31,8 @@ int main(int argc, char **argv)
     const std::string network_name = json_network.get<std::string>("name");
     const int dx = json_network.get<int>("dx");
     const double h = json_network.get<double>("h");
-    const double P_init = json_network.get<double>("init_pressure");
     const int t_step = json_network.get<int>("t_step");
     const int total_vert = json_network.get<int>("vertices");
-    const int init_vert = json_network.get<int>("init_vert");
     const int total_edg = json_network.get<int>("edges");
 
     auto default_out = cout.flags();
@@ -44,15 +43,8 @@ int main(int argc, char **argv)
     cout << setw(10) << "dx:" << setw(10) << dx << endl;
     cout << setw(10) << "dt:" << setw(10) << h << endl;
     cout << setw(10) << "time:" << setw(10) << t_step << endl;
-    cout << setw(10) << "P init: " << P_init << endl;
     cout << "--------------------------------------------------" << endl;
     cout.flags(default_out);
-
-    if(init_vert >= total_vert)
-    {
-        std::cerr << "Invalid network description\n";
-        exit(EXIT_FAILURE);
-    }
 
     /**
      * Create graph with specified number of vertices, then connect them 
@@ -63,16 +55,34 @@ int main(int argc, char **argv)
     using VertexPropertyMap = typename property_map<Graph, vertex_bundle_t>::type;
     Graph network;
 
+    std::vector<std::pair<int, double>> init_pressure;
+    boost::property_tree::ptree arrayPressure = json_network.get_child("vens");
+
+    // Fetch number of vens their pressure, and associated vertex ID
+    for(auto &child : arrayPressure)
+    {
+        int vertex_ID = child.second.get<int>("vertex_id");
+        double pressure = child.second.get<double>("pressure");
+        init_pressure.push_back(std::make_pair(vertex_ID, pressure));
+    }
+
     for(int i = 0; i < total_vert; i++)
     {
         /**
-         *  Initial pressure for a single edge is stored inside it's targer vertex. We have set
-         *  default pressure only once and for one vertex (as soon as we have only 1 fan).  
-         *  Following code sets up initial pressure for particular vertex. For other edges
-         *  pressure set to 0 because it will be evaluated during simulation.
+         *  Initial pressure for a single edge is stored inside it's targer vertex. 
+         *  Following code sets up initial pressure for vertices where we have vens. 
+         *  For other edges pressure set to 0 because it will be evaluated during simulation.
         */
-        if(i == init_vert)
-            add_vertex(VertexProperty(i, h, P_init), network);
+        auto is_init_P = [i](std::pair<int, double> item) 
+        {
+            if(i == item.first)
+                return true;
+            return false;
+        };
+
+        auto item = find_if(init_pressure.begin(), init_pressure.end(), is_init_P);
+        if(item != init_pressure.end())
+            add_vertex(VertexProperty(i, h, item->second), network);
         else 
             add_vertex(VertexProperty(i, h, 0.0), network);
     }
@@ -91,16 +101,6 @@ int main(int argc, char **argv)
         int s_step = (int)(ceil((double)length / (double)dx));
         int head = child.second.get<int>("head");
         int tail = child.second.get<int>("tail");
-
-        /**
-         * The boundary condition for pressure set only once. If edge ends up at the 
-         * initial vertice, than it's default pressure set to initial pressure for the system
-        */
-        double p_init;
-        if(tail == init_vert)
-            p_init = P_init;
-        else 
-            p_init = 0.0;
 
         EdgeProperty insert_edge(id, length, s_step, t_step, alpha, beta, gamma, h);
         add_edge(head, tail, insert_edge, network);
@@ -264,8 +264,17 @@ int main(int argc, char **argv)
         {
             VertexProperty &vert = vertex_map[*vt.first];
 
-            // Do not perform adaptation for initial pressure, because it is a boundary condition 
-            if(vert.getP(i) == P_init)
+            auto is_init_P = [&vert](std::pair<int, double> item) 
+            {
+                if(vert.getID() == item.first)
+                    return true;
+                return false;
+            };
+            
+            auto iter = find_if(init_pressure.begin(), init_pressure.end(), is_init_P);
+            
+            // Do not perform adaptation for vertices that have vans on it
+            if(iter != init_pressure.end())
                 continue; 
             vert.adapt(i);
 
