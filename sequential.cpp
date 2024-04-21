@@ -25,9 +25,13 @@ int main(int argc, char **argv)
     const std::string edge_name = edge.get<std::string>("name");
     const int length = edge.get<int>("length");
     const int dx = edge.get<int>("dx");
-    const double alpha = edge.get<double>("alpha");
-    const double beta = edge.get<double>("beta");
-    const double gamma = edge.get<double>("gamma");
+    const double F = edge.get<double>("F");
+    const double r = edge.get<double>("r");
+    const double rho = edge.get<double>("rho");
+    const int a = edge.get<int>("a");
+    const double alpha = F / (rho * dx);
+    const double beta = (F * r) / rho; 
+    const double gamma = (rho * a * a) / (F * dx);
     const double h = edge.get<double>("h");
     const double P_init = edge.get<double>("P_init");
     const int t_step = edge.get<int>("t_step");
