@@ -98,7 +98,11 @@ int main(int argc, char **argv)
             Q[i_next][k] = Q[i_curr][k] + h * (alpha * (P[i_curr][k - 1] - P[i_curr][k]) - beta * Q[i_curr][k] * abs(Q[i_curr][k]));
 
             #ifdef DEBUG
-            if(i % 10 == 0)
+            /**
+             *  Let's assume we are working on a 4k monitor with resolution 3840 x 2160. 
+             *  Graphing 1 point per 1 pixel is enough.
+            */
+            if((i % (t_step / 3840)) == 0)
             {
                 if(k == 1)
                     fprintf(Q_plot_s, "%.3f %f\n", i * h, Q[i_next][k]);
@@ -116,7 +120,8 @@ int main(int argc, char **argv)
             P[i_next][k] = P[i_curr][k] + h * (gamma * (Q[i_curr][k] - Q[i_curr][k + 1]));
             
             #ifdef DEBUG
-            if(i % 10 == 0)
+            // For an explanation look at the previous DEBUG section
+            if((i % (t_step / 3840)) == 0)
             {
                 if(k == 1)
                     fprintf(P_plot_s, "%.3f %f\n", i * h, P[i_next][k]);

@@ -58,7 +58,7 @@ int main(int argc, char **argv)
     std::vector<std::pair<int, double>> init_pressure;
     boost::property_tree::ptree arrayPressure = json_network.get_child("vens");
 
-    // Fetch number of vens their pressure, and associated vertex ID
+    // Fetch number of vens, their pressure and associated vertex ID
     for(auto &child : arrayPressure)
     {
         int vertex_ID = child.second.get<int>("vertex_id");
@@ -94,7 +94,7 @@ int main(int argc, char **argv)
     for(auto &child : arrayEdges)
     {
         int id = child.second.get<int>("id");
-        int length = child.second.get<int>("length");
+        int length = (int)(ceil(child.second.get<double>("length")));
         double alpha = child.second.get<double>("alpha");
         double beta = child.second.get<double>("beta");
         double gamma = child.second.get<double>("gamma");
@@ -135,6 +135,14 @@ int main(int argc, char **argv)
 
     // Export graph to a Graphviz DOT file
     #ifdef DEBUG
+    std::map<Graph::edge_descriptor, int> edge_numbers;
+
+    // Assign numbers to each edge
+    int edge_num = 0;
+    for (auto e : boost::make_iterator_range(boost::edges(network))) {
+        edge_numbers[e] = edge_num++;
+    }
+
     std::ofstream dotfile("TestNetwork.dot");
     write_graphviz(dotfile, network);
     std::cout << "Graph visualization exported to TestNetwork.dot" << std::endl;
@@ -251,7 +259,7 @@ int main(int argc, char **argv)
                 edge_debug.push_back(EdgeDebug("E" + std::to_string(edge.getID()), &edge));
 
             // Write down time points for each edge separately
-            if(i % 10 == 0) 
+            if((i % (t_step / 3840)) == 0)
             {
                 auto &current_debug = edge_finder(edge.getID());
                 current_debug.serialize(i * h);
@@ -284,7 +292,7 @@ int main(int argc, char **argv)
                 vertex_debug.push_back(VertexDebug("V" + std::to_string(vert.getID()), &vert));
 
             // Write down time points for each vertex separately
-            if(i % 10 == 0) 
+            if((i % (t_step / 3840)) == 0)
             {
                 auto &curr_vert_debug = vertex_finder(vert.getID());
                 curr_vert_debug.serialize(i * h);
