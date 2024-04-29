@@ -3,7 +3,6 @@
 #include <math.h>
 #include <iomanip>
 #include <string>
-#include <omp.h>
 #include <boost/circular_buffer.hpp>
 #include <boost/container/vector.hpp>
 #include <boost/property_tree/ptree.hpp>
