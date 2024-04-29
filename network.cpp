@@ -34,6 +34,8 @@ int main(int argc, char **argv)
     const int t_step = json_network.get<int>("t_step");
     const int total_vert = json_network.get<int>("vertices");
     const int total_edg = json_network.get<int>("edges");
+    const double rho = json_network.get<double>("rho");
+    const int a = json_network.get<int>("a");
 
     auto default_out = cout.flags();
     cout << "--------------------------------------------------" << endl;
@@ -50,7 +52,7 @@ int main(int argc, char **argv)
      * Create graph with specified number of vertices, then connect them 
      * according to a JSON scheme.
      */
-    using Graph = adjacency_list<vecS, vecS, directedS, VertexProperty, EdgeProperty>;
+    using Graph = adjacency_list<vecS, vecS, directedS, VertexProperty*, EdgeProperty*>;
     using EdgePropertyMap = typename property_map<Graph, edge_bundle_t>::type;
     using VertexPropertyMap = typename property_map<Graph, vertex_bundle_t>::type;
     Graph network;
@@ -82,9 +84,15 @@ int main(int argc, char **argv)
 
         auto item = find_if(init_pressure.begin(), init_pressure.end(), is_init_P);
         if(item != init_pressure.end())
-            add_vertex(VertexProperty(i, h, item->second), network);
+        {
+            VertexProperty *insert = new VertexProperty(i, h, item->second); 
+            add_vertex(insert, network);
+        }
         else 
-            add_vertex(VertexProperty(i, h, 0.0), network);
+        {
+            VertexProperty *insert = new VertexProperty(i, h, 0.0); 
+            add_vertex(insert, network);
+        }
     }
     
     // Initialize each edge and connect it to the vertex
@@ -95,14 +103,16 @@ int main(int argc, char **argv)
     {
         int id = child.second.get<int>("id");
         int length = (int)(ceil(child.second.get<double>("length")));
-        double alpha = child.second.get<double>("alpha");
-        double beta = child.second.get<double>("beta");
-        double gamma = child.second.get<double>("gamma");
+        double F = child.second.get<double>("F");
+        double r = child.second.get<double>("r");
+        double alpha = F / (rho * dx);
+        double beta = (F * r) / rho; 
+        double gamma = (rho * a * a) / (F * dx);
         int s_step = (int)(ceil((double)length / (double)dx));
         int head = child.second.get<int>("head");
         int tail = child.second.get<int>("tail");
 
-        EdgeProperty insert_edge(id, length, s_step, t_step, alpha, beta, gamma, h);
+        EdgeProperty *insert_edge = new EdgeProperty(id, s_step, t_step, alpha, beta, gamma, h);
         add_edge(head, tail, insert_edge, network);
         total_edges++;
     }
@@ -120,11 +130,11 @@ int main(int argc, char **argv)
     for(std::pair<EdgeIter, EdgeIter> iter = edges(network); iter.first != iter.second; ++iter.first)
     {
         auto tar_vert = target(*iter.first, network);
-        EdgeProperty &edge = network[*iter.first];
-        VertexProperty &vertex = network[tar_vert];
+        EdgeProperty *edge = network[*iter.first];
+        VertexProperty *vertex = network[tar_vert];
 
-        if(edge.getGamma() > vertex.getGamma())
-            vertex.setGamma(edge.getGamma());
+        if(edge->getGamma() > vertex->getGamma())
+            vertex->setGamma(edge->getGamma());
     }
 
     if(total_edges != total_edg)
@@ -152,8 +162,8 @@ int main(int argc, char **argv)
 
     for(auto iter = vertices(network); iter.first != iter.second; ++iter.first)
     {
-        VertexProperty &vertex = vertex_map[*iter.first];
-        edgefile << "Gamma: " << vertex.getGamma() << endl;
+        VertexProperty *vertex = vertex_map[*iter.first];
+        edgefile << "Gamma: " << vertex->getGamma() << endl;
     }
     std::cout << "Vertex information exported to TestNetwork_Vertices.txt" << std::endl;
     #endif 
@@ -207,8 +217,8 @@ int main(int argc, char **argv)
             auto tar_vrt_desc = target(*et.first, network);
             auto src_vrt_desc = source(*et.first, network);
             
-            double target_pressure = network[tar_vrt_desc].getP(i);
-            double source_pressure = network[src_vrt_desc].getP(i);
+            double target_pressure = network[tar_vrt_desc]->getP(i);
+            double source_pressure = network[src_vrt_desc]->getP(i);
 
             /**
              *  Pressure initialization occurs at every timestep for each edge.
@@ -216,28 +226,28 @@ int main(int argc, char **argv)
              *  and commits last pressure to a target vertex when all calculations for edge 
              *  is done. This is the way they communicate via vertex pressure.
             */
-            EdgeProperty &edge = edge_map[*et.first];
-            edge.setSourceP(i, source_pressure);
-            edge.setTargetP(i, target_pressure);
+            EdgeProperty *edge = edge_map[*et.first];
+            edge->setSourceP(i, source_pressure);
+            edge->setTargetP(i, target_pressure);
 
-            int s_step = edge.getSteps();
+            int s_step = edge->getSteps();
 
             /*************************************************************/
 
             // Loop over spatial steps for flow
             for(int k = 1; k < s_step; k++)
-                edge.calculateQ(i, k);
+                edge->calculateQ(i, k);
 
             // Loop over spatial steps for pressure
             for(int k = 1; k < s_step - 1; k++)
-                edge.calculateP(i, k);
+                edge->calculateP(i, k);
 
             /*************************************************************/
 
-            VertexProperty &target_vertex = vertex_map(tar_vrt_desc);
-            VertexProperty &source_vertex = vertex_map(src_vrt_desc);
+            VertexProperty *target_vertex = vertex_map(tar_vrt_desc);
+            VertexProperty *source_vertex = vertex_map(src_vrt_desc);
 
-            auto last_Q = edge.getLastQ(i);
+            auto last_Q = edge->getLastQ(i);
 
             /**
              *  Pressure at first spatial step goes to a source vertex with a minus sign because it is 
@@ -250,18 +260,18 @@ int main(int argc, char **argv)
             double first_flow = last_Q[0];
             double last_flow = last_Q[2];
 
-            source_vertex.addQ(-first_flow);
-            target_vertex.addQ(last_flow);
+            source_vertex->addQ(-first_flow);
+            target_vertex->addQ(last_flow);
 
             #ifdef DEBUG
             // Initialize edge debug handlers
             if(i == 0)
-                edge_debug.push_back(EdgeDebug("E" + std::to_string(edge.getID()), &edge));
+                edge_debug.push_back(EdgeDebug("E" + std::to_string(edge->getID()), edge));
 
             // Write down time points for each edge separately
             if((i % (t_step / 3840)) == 0)
             {
-                auto &current_debug = edge_finder(edge.getID());
+                auto &current_debug = edge_finder(edge->getID());
                 current_debug.serialize(i * h);
             }
             #endif
@@ -270,11 +280,11 @@ int main(int argc, char **argv)
         // Pressure adaptation in vertices
         for(auto vt = vertices(network); vt.first != vt.second; ++vt.first)
         {
-            VertexProperty &vert = vertex_map[*vt.first];
+            VertexProperty *vert = vertex_map[*vt.first];
 
-            auto is_init_P = [&vert](std::pair<int, double> item) 
+            auto is_init_P = [vert](std::pair<int, double> item) 
             {
-                if(vert.getID() == item.first)
+                if(vert->getID() == item.first)
                     return true;
                 return false;
             };
@@ -284,17 +294,17 @@ int main(int argc, char **argv)
             // Do not perform adaptation for vertices that have vans on it
             if(iter != init_pressure.end())
                 continue; 
-            vert.adapt(i);
+            vert->adapt(i);
 
             #ifdef DEBUG
             // Initialize vertex debug handlers
             if(i == 0)
-                vertex_debug.push_back(VertexDebug("V" + std::to_string(vert.getID()), &vert));
+                vertex_debug.push_back(VertexDebug("V" + std::to_string(vert->getID()), vert));
 
             // Write down time points for each vertex separately
             if((i % (t_step / 3840)) == 0)
             {
-                auto &curr_vert_debug = vertex_finder(vert.getID());
+                auto &curr_vert_debug = vertex_finder(vert->getID());
                 curr_vert_debug.serialize(i * h);
             }
             #endif
@@ -303,13 +313,13 @@ int main(int argc, char **argv)
 
     for(std::pair<EdgeIter, EdgeIter> et = edges(network); et.first != et.second; ++et.first)
     {
-        EdgeProperty &edge = edge_map[*et.first];
+        EdgeProperty *edge = edge_map[*et.first];
         auto tar_vrt_desc = target(*et.first, network);
-        VertexProperty &vert = vertex_map[tar_vrt_desc];
+        VertexProperty *vert = vertex_map[tar_vrt_desc];
 
-        std::cout << "Edge:" << edge.getID() << std::endl;
-        auto edge_Qres = edge.getLastQ(t_step - 1);
-        auto edge_Pres = edge.getLastP(t_step - 1);
+        std::cout << "Edge:" << edge->getID() << std::endl;
+        auto edge_Qres = edge->getLastQ(t_step - 1);
+        auto edge_Pres = edge->getLastP(t_step - 1);
 
         cout << "\tLast Q: " << edge_Qres[0] << endl;
         cout << "\tLast P: " << edge_Pres[0] << endl;

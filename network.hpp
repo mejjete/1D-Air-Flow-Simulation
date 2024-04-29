@@ -9,7 +9,6 @@
 class EdgeProperty
 {
 private:
-    int length;
     int steps;
     int id;
     double alpha;
@@ -23,8 +22,8 @@ private:
 
 public:
     // Edge initialization. The last parameter specifies the boundary condition for pressure
-    EdgeProperty(int ID, int l, int s, int t_steps, double al, double bet, double gam, double hh)
-        : id(ID), length(l), steps(s), alpha(al), beta(bet), gamma(gam), h(hh), 
+    EdgeProperty(int ID, int s, int t_steps, double al, double bet, double gam, double hh)
+        : id(ID), steps(s), alpha(al), beta(bet), gamma(gam), h(hh), 
         Q(2, std::vector<double>(t_steps, 0.0)), P(2, std::vector<double>(t_steps, 0.0))
     {};
 
@@ -76,7 +75,6 @@ public:
     };
 
     int getSteps() const { return steps; };
-    int getLength() const { return length; };
     int getID() const { return id; };
     double getGamma() const { return gamma; };
 };
