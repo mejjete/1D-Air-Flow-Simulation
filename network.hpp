@@ -64,7 +64,7 @@ public:
 
     std::vector<double> getLastQ(int i = 0) const 
     { 
-        int i_req = i_req % 2;
+        int i_req = i % 2;
         return std::vector<double>( {Q[i_req][1], Q[i_req][steps / 2], Q[i_req][steps - 1]}); 
     };
     
