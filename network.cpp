@@ -112,7 +112,7 @@ int main(int argc, char **argv)
         int head = child.second.get<int>("head");
         int tail = child.second.get<int>("tail");
 
-        EdgeProperty *insert_edge = new EdgeProperty(id, s_step, t_step, alpha, beta, gamma, h);
+        EdgeProperty *insert_edge = new EdgeProperty(id, s_step, alpha, beta, gamma, h);
         add_edge(head, tail, insert_edge, network);
         total_edges++;
     }

@@ -22,9 +22,9 @@ private:
 
 public:
     // Edge initialization. The last parameter specifies the boundary condition for pressure
-    EdgeProperty(int ID, int s, int t_steps, double al, double bet, double gam, double hh)
+    EdgeProperty(int ID, int s, double al, double bet, double gam, double hh)
         : id(ID), steps(s), alpha(al), beta(bet), gamma(gam), h(hh), 
-        Q(2, std::vector<double>(t_steps, 0.0)), P(2, std::vector<double>(t_steps, 0.0))
+        Q(2, std::vector<double>(s, 0.0)), P(2, std::vector<double>(s, 0.0))
     {};
 
     // One-spatial-step calculation of air flow
