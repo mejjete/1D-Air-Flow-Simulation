@@ -213,7 +213,6 @@ int main(int argc, char **argv)
             for(auto &vert : vertex_array)
             {
                 double flow = 0.0;
-                MPI_Status status;
 
                 // Receive flows from both incoming and outcoming edges
                 if(i != 0)
@@ -226,7 +225,7 @@ int main(int argc, char **argv)
                             flow += -edge->getLastQ(i - 1, 1);
                         else 
                         {
-                            MPI_Recv(&temp, 1, MPI_DOUBLE, ed, FLOW, MPI_COMM_WORLD, &status);
+                            MPI_Recv(&temp, 1, MPI_DOUBLE, ed, FLOW, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
                             flow += temp;
                         }
                     }
@@ -237,7 +236,7 @@ int main(int argc, char **argv)
                             flow += edge->getLastQ(i - 1, s_step - 1);
                         else 
                         {
-                            MPI_Recv(&temp, 1, MPI_DOUBLE, ed, FLOW, MPI_COMM_WORLD, &status);
+                            MPI_Recv(&temp, 1, MPI_DOUBLE, ed, FLOW, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
                             flow += temp;
                         }
                     }
@@ -245,6 +244,25 @@ int main(int argc, char **argv)
 
                 // Calculate flow in vertex
                 double pressure = vert.calculateP(i, flow);
+
+                // Send pressure to all incoming and outcoming edges
+                for(auto ed : vert.getOutcoming())
+                {
+                    // Do no send anything to myself
+                    if(ed == 0)
+                        source_P = pressure;
+                    else;
+                        MPI_Send(&pressure, 1, MPI_DOUBLE, ed, PRESSURE, MPI_COMM_WORLD);
+                }
+
+                for(auto ed : vert.getIncoming())
+                {
+                    // Do not send anything to myself
+                    if(ed == 0)
+                        target_P = pressure;
+                    else;
+                        MPI_Send(&pressure, 1, MPI_DOUBLE, ed, PRESSURE, MPI_COMM_WORLD);  
+                }
 
                 #ifdef DEBUG
                 // Write down time points for each vertex separately
@@ -254,52 +272,18 @@ int main(int argc, char **argv)
                     curr_vert_debug.serialize(i * h);
                 }
                 #endif
-
-                MPI_Request incoming_request;
-                MPI_Request outcoming_request;
-
-                // Send pressure to all incoming and outcoming edges
-                for(auto ed : vert.getOutcoming())
-                {
-                    // Do no send anything to myself
-                    if(ed == 0)
-                        source_P = pressure;
-                    else
-                    {
-                        MPI_Isend(&pressure, 1, MPI_DOUBLE, ed, PRESSURE, MPI_COMM_WORLD, &outcoming_request);
-                        MPI_Request_free(&outcoming_request);
-                    }
-                }
-
-                for(auto ed : vert.getIncoming())
-                {
-                    // Do not send anything to myself
-                    if(ed == 0)
-                        target_P = pressure;
-                    else
-                    {
-                        MPI_Isend(&pressure, 1, MPI_DOUBLE, ed, PRESSURE, MPI_COMM_WORLD, &incoming_request);  
-                        MPI_Request_free(&incoming_request);
-                    } 
-                }
             }
         }
-
-        MPI_Barrier(MPI_COMM_WORLD);
-        
-        if(mpi_rank != 0)
+        else
         {
-            MPI_Status source_status;
-            MPI_Status target_status;
-
             /**
              *  MPI guarantees to recieve messages in order they are sent.
              *  
              *  Additionally, we must guarantee that 2 messages has been sent in right order,
              *  so following calls to MPI_Recv do not yeild any delays.
              */
-            MPI_Recv(&source_P, 1, MPI_DOUBLE, 0, PRESSURE, MPI_COMM_WORLD, &source_status);
-            MPI_Recv(&target_P, 1, MPI_DOUBLE, 0, PRESSURE, MPI_COMM_WORLD, &target_status);      
+            MPI_Recv(&source_P, 1, MPI_DOUBLE, 0, PRESSURE, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            MPI_Recv(&target_P, 1, MPI_DOUBLE, 0, PRESSURE, MPI_COMM_WORLD, MPI_STATUS_IGNORE);      
         }
 
         edge->setSourceP(i, source_P);
@@ -323,27 +307,15 @@ int main(int argc, char **argv)
         // Target flow goes to target vertex with normal sign
         double target_Q = edge->getLastQ(i, s_step - 1);
 
-        MPI_Request source_request;
-        MPI_Request target_request;
-
         // Send incoming and outcoming flows to source and target vertices
-        MPI_Isend(&source_Q, 1, MPI_DOUBLE, 0, FLOW, MPI_COMM_WORLD, &source_request);
-        MPI_Isend(&target_Q, 1, MPI_DOUBLE, 0, FLOW, MPI_COMM_WORLD, &target_request);
-        
-        /**
-         *  We do not need to wait or test any of the requests. In fact, we are 
-         *  guarantee that all resources that has been sent will be fetched lately.
-        */
-        MPI_Request_free(&source_request);
-        MPI_Request_free(&target_request);
+        MPI_Send(&source_Q, 1, MPI_DOUBLE, 0, FLOW, MPI_COMM_WORLD);
+        MPI_Send(&target_Q, 1, MPI_DOUBLE, 0, FLOW, MPI_COMM_WORLD);
 
         #ifdef DEBUG
         // Write down time points for each edge separately
         if((i % (t_step / 3840)) == 0)
             edge_debug.serialize(i * h);
         #endif
-
-        MPI_Barrier(MPI_COMM_WORLD);
     }
 
     printf("Edge %d\n", edge->getID());
