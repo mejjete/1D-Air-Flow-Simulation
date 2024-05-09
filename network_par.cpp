@@ -251,7 +251,7 @@ int main(int argc, char **argv)
                     // Do no send anything to myself
                     if(ed == 0)
                         source_P = pressure;
-                    else;
+                    else
                         MPI_Send(&pressure, 1, MPI_DOUBLE, ed, PRESSURE, MPI_COMM_WORLD);
                 }
 
@@ -260,7 +260,7 @@ int main(int argc, char **argv)
                     // Do not send anything to myself
                     if(ed == 0)
                         target_P = pressure;
-                    else;
+                    else
                         MPI_Send(&pressure, 1, MPI_DOUBLE, ed, PRESSURE, MPI_COMM_WORLD);  
                 }
 
