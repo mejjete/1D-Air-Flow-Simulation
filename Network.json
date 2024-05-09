@@ -2,9 +2,11 @@
     "name" : "TestNetwork",
     "vertices" : 6,
     "edges" : 8,
-    "t_step" : 1200000,
+    "t_step" : 1800000,
     "h" : 0.0001,
     "dx" : 40,
+    "rho" : 1.254,
+    "a" : 343,
     "vens" :
     [
         {
@@ -19,72 +21,64 @@
             "head" : 0,
             "tail" : 1,
             "length" : 800,
-            "alpha" : 0.13,
-            "beta" : 0.00252,
-            "gamma": 523.6
+            "F" : 6.5,
+            "r" : 0.000484
         },
         {
             "id" : 1,
             "head" : 1,
             "tail" : 2,
             "length" : 150,
-            "alpha" : 0.13,
-            "beta" : 0.00252,
-            "gamma": 523.6
+            "F" : 6.5,
+            "r" : 0.000484
         },
         {
             "id" : 2,
             "head" : 2,
             "tail" : 3,
             "length" : 1925,
-            "alpha" : 0.093,
-            "beta" : 0.004,
-            "gamma": 728.6
+            "F" : 4.67,
+            "r" : 0.00105
         },
         {
             "id" : 3,
             "head" : 2,
             "tail" : 3,
             "length" : 1410,
-            "alpha" : 0.12,
-            "beta" : 0.009,
-            "gamma": 569.1
+            "F" : 5.98,
+            "r" : 0.0019
         },
         {
             "id" : 4,
             "head" : 1,
             "tail" : 4,
             "length" : 1720,
-            "alpha" : 0.09,
-            "beta" : 0.004,
-            "gamma": 756.2
+            "F" : 4.5,
+            "r" : 0.00112
         },
         {
             "id" : 5,
             "head" : 1,
             "tail" : 4,
             "length" : 934,
-            "alpha" : 0.1,
-            "beta" : 0.0055,
-            "gamma": 684.7
+            "F" : 4.97,
+            "r" : 0.00137
         },
         {
             "id" : 6,
             "head" : 3,
             "tail" : 4,
             "length" : 150,
-            "alpha" : 0.13,
-            "beta" : 0.00252,
-            "gamma": 523.6
+            "F" : 6.5,
+            "r" : 0.000484
         },
         {
             "id" : 7,
             "head" : 4,
             "tail" : 5,
             "length" : 650,
-            "alpha" : 0.13,
-            "beta" : 0.00252,
-            "gamma": 523.6
+            "F" : 6.5,
+            "r" : 0.000484
         }
     ]
 }
