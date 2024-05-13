@@ -40,6 +40,8 @@ int main(int argc, char **argv)
 
     int t_step;
     double h;
+    int edges;
+    int total_vert;
     EdgeProperty *edge;
     std::vector<VertexProperty> vertex_array;
     std::vector<_mpi_message_t> arguments;
@@ -60,10 +62,11 @@ int main(int argc, char **argv)
         const int dx = json_network.get<int>("dx");
         h = json_network.get<double>("h");
         t_step = json_network.get<int>("t_step");
-        const int total_vert = json_network.get<int>("vertices");
+        total_vert = json_network.get<int>("vertices");
         const int total_edg = json_network.get<int>("edges");
         const double rho = json_network.get<double>("rho");
         const int a = json_network.get<int>("a");
+        edges = total_edg;
 
         auto default_out = cout.flags();
         cout << "--------------------------------------------------" << endl;
@@ -146,7 +149,9 @@ int main(int argc, char **argv)
 
     // Broadcast t_step and h to every process
     MPI_Bcast(&t_step, 1, MPI_INT, 0, MPI_COMM_WORLD);
-    MPI_Bcast(&h, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);  
+    MPI_Bcast(&h, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&edges, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&total_vert, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
     // Send edge's coefficients to a corresponding process
     if(mpi_rank == 0)
@@ -201,53 +206,76 @@ int main(int argc, char **argv)
 
     int s_step = edge->getSteps();
 
+    /**
+     *  Buffer is used to collect flows from each edges. Calculate 
+     *  pressure in vertices and then send resulting pressure to each edge. 
+     *  
+     *  buff_flow[n][0] - contains source flow or pressure for edge n
+     *  buff_flow[n][1] - contains target flow or pressure for edge n
+    */
+    double **buff = new double*[edges];
+    for(int i = 0; i < edges; i++)
+        buff[i] = new double[2];
+
     for(int i = 0; i < t_step; i++)
     {
-        double source_P = 0.0;
-        double target_P = 0.0;
-
         // Do boundary exchange
         if(mpi_rank == 0)
         {
+            // Obtaining buffer of flows from each edge
+            if(i != 0)
+            {
+                double flow_buff[2];
+                
+                for(int ed = 0; ed < edges; ed++)
+                {
+                    MPI_Status status;
+                    MPI_Recv(flow_buff, 2, MPI_DOUBLE, MPI_ANY_SOURCE, FLOW, MPI_COMM_WORLD, &status);
+                    buff[status.MPI_SOURCE][0] = flow_buff[0];
+                    buff[status.MPI_SOURCE][1] = flow_buff[1];
+                }
+            }
+
+            // Adapt pressure in each vertex
             for(auto &vert : vertex_array)
             {
                 double flow = 0.0;
 
-                // Receive flows from both incoming and outcoming edges
-                if(i != 0)
-                {
-                    double temp = 0.0;
+                // Fetch incoming and outcoming flows from edges
+                for(auto &out : vert.getOutcoming())
+                    flow += buff[out][0];
 
-                    for(auto ed : vert.getOutcoming())
-                    {
-                        MPI_Recv(&temp, 1, MPI_DOUBLE, ed, FLOW, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                        flow += temp;
-                    }
-
-                    for(auto ed : vert.getIncoming())
-                    {
-                        MPI_Recv(&temp, 1, MPI_DOUBLE, ed, FLOW, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                        flow += temp;
-                    }
-                }
-
-                // Calculate flow in vertex
-                double pressure = vert.calculateP(i, flow);
-
-                // Send pressure to all incoming and outcoming edges
-                for(auto ed : vert.getOutcoming())
-                    MPI_Send(&pressure, 1, MPI_DOUBLE, ed, PRESSURE, MPI_COMM_WORLD);
-
-                for(auto ed : vert.getIncoming())
-                    MPI_Send(&pressure, 1, MPI_DOUBLE, ed, PRESSURE, MPI_COMM_WORLD);
+                for(auto &inc : vert.getIncoming())
+                    flow += buff[inc][1];
                 
+                vert.calculateP(i, flow);
+                double press = vert.getP(i);
+
+                // Register pressure for each edge
+                for(auto &out : vert.getOutcoming())
+                    buff[out][0] = press;
+                
+                for(auto &inc : vert.getIncoming())
+                    buff[inc][1] = press;
+
                 #ifdef DEBUG
-                // Write down time points for each vertex separately
                 if((i % (t_step / 3840)) == 0)
                 {
                     auto &curr_vert_debug = vertex_finder(vert.getID());
                     curr_vert_debug.serialize(i * h);
                 }
+                #endif
+            }
+
+            // Send calculated pressure to all edges
+            for(int ed = 0; ed != edges; ed++)
+            {
+                #ifdef ISEND
+                MPI_Request request;
+                MPI_Isend(buff[ed], 2, MPI_DOUBLE, ed, PRESSURE, MPI_COMM_WORLD, &request);
+                MPI_Request_free(&request);
+                #else 
+                MPI_Send(buff[ed], 2, MPI_DOUBLE, ed, PRESSURE, MPI_COMM_WORLD);
                 #endif
             }
         }
@@ -258,8 +286,10 @@ int main(int argc, char **argv)
          *  Additionally, we must guarantee that 2 messages has been sent in right order,
          *  so following calls to MPI_Recv do not yeild any delays.
          */
-        MPI_Recv(&source_P, 1, MPI_DOUBLE, 0, PRESSURE, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        MPI_Recv(&target_P, 1, MPI_DOUBLE, 0, PRESSURE, MPI_COMM_WORLD, MPI_STATUS_IGNORE);      
+        double buff[2];
+        MPI_Recv(buff, 2, MPI_DOUBLE, 0, PRESSURE, MPI_COMM_WORLD, MPI_STATUS_IGNORE);  
+        double source_P = buff[0];
+        double target_P = buff[1];
 
         edge->setSourceP(i, source_P);
         edge->setTargetP(i, target_P);
@@ -282,9 +312,17 @@ int main(int argc, char **argv)
         // Target flow goes to target vertex with normal sign
         double target_Q = edge->getLastQ(i, s_step - 1);
 
+        buff[0] = source_Q;
+        buff[1] = target_Q;
+
         // Send incoming and outcoming flows to source and target vertices
-        MPI_Send(&source_Q, 1, MPI_DOUBLE, 0, FLOW, MPI_COMM_WORLD);
-        MPI_Send(&target_Q, 1, MPI_DOUBLE, 0, FLOW, MPI_COMM_WORLD);
+        #ifdef ISEND
+        MPI_Request request;
+        MPI_Isend(buff, 2, MPI_DOUBLE, 0, FLOW, MPI_COMM_WORLD, &request);
+        MPI_Request_free(&request);
+        #else
+        MPI_Send(buff, 2, MPI_DOUBLE, 0, FLOW, MPI_COMM_WORLD);
+        #endif
 
         #ifdef DEBUG
         // Write down time points for each edge separately
@@ -298,6 +336,11 @@ int main(int argc, char **argv)
     printf("\tP: %f\n", edge->getLastP(t_step, s_step - 1));
 
     delete edge;
+
+    for(int i = 0; i < edges; i++)
+        delete[] buff[i];
+    delete[] buff;
+
     MPI_Finalize();
     return 0;
 }
