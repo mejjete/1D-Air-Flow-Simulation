@@ -215,10 +215,18 @@ int main(int argc, char **argv)
     */
     double **buff = new double*[edges];
     for(int i = 0; i < edges; i++)
+    {
         buff[i] = new double[2];
+        buff[i][0] = 0.0;
+        buff[i][1] = 0.0;
+    }
 
     for(int i = 0; i < t_step; i++)
     {
+        double source_P;
+        double target_P;
+        double buff_temp[2];
+
         // Do boundary exchange
         if(mpi_rank == 0)
         {
@@ -226,8 +234,9 @@ int main(int argc, char **argv)
             if(i != 0)
             {
                 double flow_buff[2];
-                
-                for(int ed = 0; ed < edges; ed++)
+
+                // Received messaged from all processes except 0th
+                for(int ed = 1; ed < edges; ed++)
                 {
                     MPI_Status status;
                     MPI_Recv(flow_buff, 2, MPI_DOUBLE, MPI_ANY_SOURCE, FLOW, MPI_COMM_WORLD, &status);
@@ -242,20 +251,20 @@ int main(int argc, char **argv)
                 double flow = 0.0;
 
                 // Fetch incoming and outcoming flows from edges
-                for(auto &out : vert.getOutcoming())
+                for(auto out : vert.getOutcoming())
                     flow += buff[out][0];
 
-                for(auto &inc : vert.getIncoming())
+                for(auto inc : vert.getIncoming())
                     flow += buff[inc][1];
                 
                 vert.calculateP(i, flow);
                 double press = vert.getP(i);
 
                 // Register pressure for each edge
-                for(auto &out : vert.getOutcoming())
+                for(auto out : vert.getOutcoming())
                     buff[out][0] = press;
                 
-                for(auto &inc : vert.getIncoming())
+                for(auto inc : vert.getIncoming())
                     buff[inc][1] = press;
 
                 #ifdef DEBUG
@@ -267,8 +276,8 @@ int main(int argc, char **argv)
                 #endif
             }
 
-            // Send calculated pressure to all edges
-            for(int ed = 0; ed != edges; ed++)
+            // Send calculated pressure to all processes except 0th
+            for(int ed = 1; ed != edges; ed++)
             {
                 #ifdef ISEND
                 MPI_Request request;
@@ -278,18 +287,22 @@ int main(int argc, char **argv)
                 MPI_Send(buff[ed], 2, MPI_DOUBLE, ed, PRESSURE, MPI_COMM_WORLD);
                 #endif
             }
-        }
 
-        /**
-         *  MPI guarantees to recieve messages in order they are sent.
-         *  
-         *  Additionally, we must guarantee that 2 messages has been sent in right order,
-         *  so following calls to MPI_Recv do not yeild any delays.
-         */
-        double buff[2];
-        MPI_Recv(buff, 2, MPI_DOUBLE, 0, PRESSURE, MPI_COMM_WORLD, MPI_STATUS_IGNORE);  
-        double source_P = buff[0];
-        double target_P = buff[1];
+            source_P = buff[0][0];
+            target_P = buff[0][1];
+        }
+        else 
+        {
+            /**
+             *  MPI guarantees to recieve messages in order they are sent.
+             *  
+             *  Additionally, we must guarantee that 2 messages has been sent in right order,
+             *  so following calls to MPI_Recv do not yeild any delays.
+             */
+            MPI_Recv(buff[mpi_rank], 2, MPI_DOUBLE, 0, PRESSURE, MPI_COMM_WORLD, MPI_STATUS_IGNORE);  
+            source_P = buff[mpi_rank][0];
+            target_P = buff[mpi_rank][1];
+        }
 
         edge->setSourceP(i, source_P);
         edge->setTargetP(i, target_P);
@@ -312,17 +325,20 @@ int main(int argc, char **argv)
         // Target flow goes to target vertex with normal sign
         double target_Q = edge->getLastQ(i, s_step - 1);
 
-        buff[0] = source_Q;
-        buff[1] = target_Q;
+        buff[mpi_rank][0] = source_Q;
+        buff[mpi_rank][1] = target_Q;
 
-        // Send incoming and outcoming flows to source and target vertices
-        #ifdef ISEND
-        MPI_Request request;
-        MPI_Isend(buff, 2, MPI_DOUBLE, 0, FLOW, MPI_COMM_WORLD, &request);
-        MPI_Request_free(&request);
-        #else
-        MPI_Send(buff, 2, MPI_DOUBLE, 0, FLOW, MPI_COMM_WORLD);
-        #endif
+        if(edge->getID() != 0)
+        {
+            // Send incoming and outcoming flows to source and target vertices
+            #ifdef ISEND
+            MPI_Request request;
+            MPI_Isend(buff[mpi_rank], 2, MPI_DOUBLE, 0, FLOW, MPI_COMM_WORLD, &request);
+            MPI_Request_free(&request);
+            #else
+            MPI_Send(buff[mpi_rank], 2, MPI_DOUBLE, 0, FLOW, MPI_COMM_WORLD);
+            #endif
+        }
 
         #ifdef DEBUG
         // Write down time points for each edge separately
