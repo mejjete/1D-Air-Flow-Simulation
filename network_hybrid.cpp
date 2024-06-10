@@ -23,7 +23,15 @@ int main(int argc, char **argv)
     using namespace boost;
     using namespace std;
 
-    MPI_Init(&argc, &argv);
+    int provided;
+    MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided);
+    
+    if(provided < MPI_THREAD_MULTIPLE) 
+    {
+        std::cerr << "MPI does not provide required thread support" << std::endl;
+        MPI_Abort(MPI_COMM_WORLD, 1);
+    }
+
     MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
 
@@ -63,6 +71,68 @@ int main(int argc, char **argv)
     }
 
     VertexProperty vertex = readJsonNetwork(json_network, mpi_rank);
+    int team_size = vertex.getEdges().size();
+
+    #if 0
+    // omp_set_num_threads(team_size);
+
+    #pragma omp parallel
+    {
+        #pragma omp single
+        {
+            if(omp_get_num_threads() != team_size && team_size != 0)
+                throw std::runtime_error("Can't set the number of threads for a given edge\n");
+        }
+
+        // Head vertex has no incoming edges
+        if(team_size > 0)
+        {
+            int thread_id = omp_get_thread_num();
+            EdgeProperty *edge = &vertex.getEdges()[thread_id];
+            int s_step = edge->getSteps();
+
+            // Main calculation
+            for(int i = 0; i < t_step; i++)
+            {
+                for(int k = 1; k < s_step; k++)
+                    edge->calculateQ(i, k);
+                
+                for(int k = 1; k < s_step - 1; k++)
+                    edge->calculateP(i, k);
+
+                #pragma omp master
+                {
+                    // Exchange parameters
+                    double source_Q;
+                }
+
+                // Wait till master thread completes the communication so we can continue calculation
+                #pragma omp barrier
+            }
+
+            #pragma omp critical
+            {
+                printf("Edge %d\n", edge->getID());
+                printf("\tQ: %f\n", edge->getLastQ(t_step, s_step - 1));
+                printf("\tP: %f\n", edge->getLastP(t_step, s_step - 1));
+            }
+        }
+    }
+
+    #endif
+
+    fflush(stdout);
+    MPI_Barrier(MPI_COMM_WORLD);
+
+    printf("Vertex: %d\n", vertex.getID());
+    printf("Outcoming messages: %d\n", vertex.getOutMsg());
+
+    #if 0
+    printf("Adjjacent vertices: \t");
+    for(auto i : vertex.getVertex())
+        printf("%d ", i);
+    printf("\n");
+    #endif 
 
     MPI_Finalize();
     return 0;
@@ -89,6 +159,8 @@ VertexProperty readJsonNetwork(boost::property_tree::ptree &json_network, int ra
 
     /*                  EDGE INITIALIZATION              */
     boost::property_tree::ptree arrayEdges = json_network.get_child("edge");
+    std::set<std::pair<int, int>> out_edges;
+    std::set<int> vert;
     int edges = 0;
 
     for(auto &child : arrayEdges)
@@ -109,7 +181,23 @@ VertexProperty readJsonNetwork(boost::property_tree::ptree &json_network, int ra
             EdgeProperty edge(id, s_step, head, tail, alpha, beta, gamma, h);
             vertex.addEdge(edge);
         }
+
+        /**
+         *  Parallel Edge Reduction mechanism requires us to know hom much messages we are gonna
+         *  receive. Because some of the outcoming edges can be grouped together and sent as a 
+         *  1 single message, we have to make sure we receive all messages by tracking message amount.
+        */
+        if(head == rank)
+        {
+            out_edges.insert(std::make_pair(head, tail));
+            vert.insert(tail);
+        }
     }
 
+    // Add adjacent vertices
+    for(auto i : vert)
+        vertex.addVertex(i);
+
+    vertex.setOutMsg(out_edges.size());
     return vertex;
 }

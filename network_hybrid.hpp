@@ -4,6 +4,7 @@
 #include <iostream>
 #include <fstream>
 #include <math.h>
+#include <set>
 
 enum
 {
@@ -93,6 +94,20 @@ public:
     double getGamma() const { return gamma; };
 };
 
+// Logical grouping of the outcoming edges 
+class EdgeGroup
+{
+private:
+    // std::vector<EdgeProperty&> group;
+    int vertex;
+
+public:
+    void setVertex(int v) { vertex = v; };
+    int getVertex() const { return vertex; };
+    // void addEdge(EdgeProperty &edge) { group.push_back(edge); };
+    // std::vector<EdgeProperty&> &getEdges() { return group; };
+};
+
 // Property map for vertex
 class VertexProperty
 {
@@ -102,16 +117,23 @@ private:
     double h;
     double gamma;
     int id;
+    int out_message;
 
     // Set to true if this vertex has to be updated during adaptation
     bool flags;
 
-    // Each vertex owns only incoming edges
+    // Global array of all incoming edges
     std::vector<EdgeProperty> edges;
+
+    // Logical grouping of incoming edges into edge groups
+    std::vector<EdgeGroup> edge_groups;
+
+    // Set of adjacent vertices which is used for communication 
+    std::vector<int> adjacent_vert;
 
 public:
     VertexProperty(int ID, double hh, double p, double gm) 
-        : h(hh), flags(false), gamma(gm), id(ID)
+        : h(hh), flags(false), gamma(gm), id(ID), out_message(0)
     {
         P[0] = p;
         P[1] = p;
@@ -125,22 +147,31 @@ public:
         int i_next = (t_step + 1) % 2;
         int i_curr = t_step % 2;
 
-         if(flags == true)
+        if(flags == true)
             return P[i_next]; 
         return P[i_next] = P[i_curr] + h * (gamma * flow);
     };
 
-    const std::vector<EdgeProperty>& getEdges() { return edges; };
+    std::vector<EdgeProperty>& getEdges() { return edges; };
 
     void setGamma(double g)     { gamma = g; };
     void setP(double Pp)        { P[0] = Pp; P[1] = Pp; };
+    void setOutMsg(int msg)     { out_message = msg; };
+    int getOutMsg() const       { return out_message; };
     auto getP(int t_step) const { return P[t_step % 2]; };
     int getID() const           { return id; };
     void setDefault()           { flags = true; };
+
+    void addVertex(int vertex)      { adjacent_vert.push_back(vertex); };
+    std::vector<int> &getVertex()   { return adjacent_vert; };
+
     void addEdge(EdgeProperty edge) 
     {
         if(edge.getGamma() > gamma)
             gamma = edge.getGamma();
+        
+        edge.setTargetP(0, getP(0));
+        edge.setTargetP(1, getP(0));
         edges.push_back(edge);
     }
 };
