@@ -129,11 +129,11 @@ private:
     std::vector<EdgeGroup> edge_groups;
 
     // Set of adjacent vertices which is used for communication 
-    std::vector<int> adjacent_vert;
+    int adjacent_vert;
 
 public:
     VertexProperty(int ID, double hh, double p, double gm) 
-        : h(hh), flags(false), gamma(gm), id(ID), out_message(0)
+        : h(hh), flags(false), gamma(gm), id(ID), adjacent_vert(0)
     {
         P[0] = p;
         P[1] = p;
@@ -162,8 +162,8 @@ public:
     int getID() const           { return id; };
     void setDefault()           { flags = true; };
 
-    void addVertex(int vertex)      { adjacent_vert.push_back(vertex); };
-    std::vector<int> &getVertex()   { return adjacent_vert; };
+    void addVertex()            { adjacent_vert++; };
+    int getVertexNum() const    { return adjacent_vert; };
 
     void addEdge(EdgeProperty edge) 
     {

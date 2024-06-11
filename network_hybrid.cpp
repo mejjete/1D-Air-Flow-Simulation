@@ -15,7 +15,7 @@ int mpi_size, mpi_rank;
 int t_step, total_edges, total_vertices, dx;
 double h, rho, a;
 
-// Return VertexProperty object for each MPI process
+// Return VertexProperty object in each MPI process
 VertexProperty readJsonNetwork(boost::property_tree::ptree &, int);
 
 int main(int argc, char **argv)
@@ -71,7 +71,7 @@ int main(int argc, char **argv)
     }
 
     VertexProperty vertex = readJsonNetwork(json_network, mpi_rank);
-    int team_size = vertex.getEdges().size();
+    int team_size = vertex.getVertexNum();
 
     #if 0
     // omp_set_num_threads(team_size);
@@ -196,7 +196,7 @@ VertexProperty readJsonNetwork(boost::property_tree::ptree &json_network, int ra
 
     // Add adjacent vertices
     for(auto i : vert)
-        vertex.addVertex(i);
+        vertex.addVertex();
 
     vertex.setOutMsg(out_edges.size());
     return vertex;
