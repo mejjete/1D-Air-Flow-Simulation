@@ -106,6 +106,7 @@ misc/
 
 # Visual Studio Code 
 .vscode
+.cache
 
 # Batch job
 *.sh

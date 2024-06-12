@@ -1,14 +1,15 @@
+#include <algorithm>
+#include <cstdio>
 #include <iostream>
-#include <vector>
 #include <math.h>
 #include <iomanip>
 #include <string>
-#include <type_traits>
+#include <set>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
-#include <algorithm>
 #include <mpi.h>
 #include <omp.h>
+#include <vector>
 #include "network_hybrid.hpp"
 
 int mpi_size, mpi_rank;
@@ -81,24 +82,24 @@ int main(int argc, char **argv)
         #pragma omp single
         {
             if(omp_get_num_threads() != team_size && team_size != 0)
-                throw std::runtime_error("Can't set the number of threads for a given edge\n");
+                throw std::runtime_error("Number of threads != number of edges associated with vertex\n");
         }
 
         // Head vertex has no incoming edges
         if(team_size > 0)
         {
             int thread_id = omp_get_thread_num();
-            EdgeProperty *edge = &vertex.getEdges()[thread_id];
+            EdgeProperty &edge = vertex.getEdges()[thread_id];
             int s_step = edge->getSteps();
 
             // Main calculation
             for(int i = 0; i < t_step; i++)
             {
                 for(int k = 1; k < s_step; k++)
-                    edge->calculateQ(i, k);
+                    edge.calculateQ(i, k);
                 
                 for(int k = 1; k < s_step - 1; k++)
-                    edge->calculateP(i, k);
+                    edge.calculateP(i, k);
 
                 #pragma omp master
                 {
@@ -121,14 +122,20 @@ int main(int argc, char **argv)
 
     #endif
 
-    fflush(stdout);
-    MPI_Barrier(MPI_COMM_WORLD);
+    // fflush(stdout);
+    // MPI_Barrier(MPI_COMM_WORLD);
 
     printf("Vertex: %d\n", vertex.getID());
-    printf("Outcoming messages: %d\n", vertex.getOutMsg());
+    for(auto iter : vertex.getEdgeGroups())
+    {
+        std::cout << "\tGroup: ";
+        for(auto edge : iter.getEdges())
+            std::cout << edge.getID() << " ";
+        std::cout << std::endl;
+    }
 
     #if 0
-    printf("Adjjacent vertices: \t");
+    printf("Adjacent vertices: \t");
     for(auto i : vertex.getVertex())
         printf("%d ", i);
     printf("\n");
@@ -200,4 +207,42 @@ VertexProperty readJsonNetwork(boost::property_tree::ptree &json_network, int ra
 
     vertex.setOutMsg(out_edges.size());
     return vertex;
+}
+
+void VertexProperty::addEdge(EdgeProperty edge)
+{
+    // For a given vertex we take the biggest gamma among its edges
+    if(edge.getGamma() > gamma)
+        gamma = edge.getGamma();
+
+    edge.setTargetP(0, getP(0));
+    edge.setTargetP(1, getP(0));
+
+    int edge_head = edge.getHead();
+    int edge_tail = edge.getTail();
+
+    auto iter = std::find_if(edge_groups.begin(), edge_groups.end(), [edge_head](EdgeGroup &grp) 
+        { return edge_head == grp.getVertex(); });
+    
+    if(iter == edge_groups.end())
+    {
+        EdgeGroup new_group(edge_head);
+        new_group.addEdge(edge);
+        edge_groups.push_back(new_group);
+    }
+    else
+        iter->addEdge(edge);
+}
+
+std::vector<EdgeProperty> VertexProperty::getEdges()
+{
+    std::vector<EdgeProperty> edges;
+
+    for(auto group : edge_groups)
+    {
+        for(auto single_edge : group.getEdges())
+            edges.push_back(single_edge);
+    }
+
+    return edges;
 }
