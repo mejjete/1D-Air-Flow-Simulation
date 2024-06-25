@@ -72,7 +72,6 @@ int main(int argc, char **argv)
     }
 
     VertexProperty vertex = readJsonNetwork(json_network, mpi_rank);
-    int team_size = vertex.getVertexNum();
 
     #if 0
     // omp_set_num_threads(team_size);
@@ -168,7 +167,6 @@ VertexProperty readJsonNetwork(boost::property_tree::ptree &json_network, int ra
     boost::property_tree::ptree arrayEdges = json_network.get_child("edge");
     std::set<std::pair<int, int>> out_edges;
     std::set<int> vert;
-    int edges = 0;
 
     for(auto &child : arrayEdges)
     {
@@ -202,7 +200,7 @@ VertexProperty readJsonNetwork(boost::property_tree::ptree &json_network, int ra
     }
 
     // Add adjacent vertices
-    for(auto i : vert)
+    for(auto _[[maybe_unused]] : vert)
         vertex.addVertex();
 
     vertex.setOutMsg(out_edges.size());
@@ -219,7 +217,6 @@ void VertexProperty::addEdge(EdgeProperty edge)
     edge.setTargetP(1, getP(0));
 
     int edge_head = edge.getHead();
-    int edge_tail = edge.getTail();
 
     auto iter = std::find_if(edge_groups.begin(), edge_groups.end(), [edge_head](EdgeGroup &grp) 
         { return edge_head == grp.getVertex(); });

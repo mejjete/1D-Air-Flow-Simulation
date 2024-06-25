@@ -118,7 +118,6 @@ int main(int argc, char **argv)
     }
 
     using EdgeIter = typename boost::graph_traits<Graph>::edge_iterator;
-    using VertexIter = typename boost::graph_traits<Graph>::vertex_iterator;
 
     EdgePropertyMap edge_map = get(edge_bundle, network);
     VertexPropertyMap vertex_map = get(vertex_bundle, network);
@@ -314,8 +313,6 @@ int main(int argc, char **argv)
     for(std::pair<EdgeIter, EdgeIter> et = edges(network); et.first != et.second; ++et.first)
     {
         EdgeProperty *edge = edge_map[*et.first];
-        auto tar_vrt_desc = target(*et.first, network);
-        VertexProperty *vert = vertex_map[tar_vrt_desc];
 
         std::cout << "Edge:" << edge->getID() << std::endl;
         auto edge_Qres = edge->getLastQ(t_step - 1);

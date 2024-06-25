@@ -23,7 +23,7 @@ private:
 public:
     // Edge initialization. The last parameter specifies the boundary condition for pressure
     EdgeProperty(int ID, int s, double al, double bet, double gam, double hh)
-        : id(ID), steps(s), alpha(al), beta(bet), gamma(gam), h(hh), 
+        : steps(s), id(ID), alpha(al), beta(bet), gamma(gam), h(hh), 
         Q(2, std::vector<double>(s, 0.0)), P(2, std::vector<double>(s, 0.0))
     {};
 
@@ -93,13 +93,13 @@ private:
     std::vector<double> regi;
 
 public:
-    VertexProperty() : h(0), regi(0), gamma(0), id(0)
+    VertexProperty() : h(0), gamma(0), id(0), regi(0)
     {
         P[0] = 0.0;
         P[1] = 0.0;
     };
 
-    VertexProperty(int ID, double hh, double p) : h(hh), gamma(0), regi(0), id(ID)
+    VertexProperty(int ID, double hh, double p) : h(hh), gamma(0), id(ID), regi(0)
     {
         P[0] = p;
         P[1] = p;
@@ -118,7 +118,7 @@ public:
         int i_curr = t_step % 2;
         double resQ = 0.0;
 
-        for(int i = 0; i < regi.size(); i++)
+        for(size_t i = 0; i < regi.size(); i++)
             resQ += regi[i];
         
         regi.clear();

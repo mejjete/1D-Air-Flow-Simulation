@@ -225,7 +225,6 @@ int main(int argc, char **argv)
     {
         double source_P;
         double target_P;
-        double buff_temp[2];
 
         // Do boundary exchange
         if(mpi_rank == 0)

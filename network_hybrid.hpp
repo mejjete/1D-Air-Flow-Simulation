@@ -30,7 +30,7 @@ private:
 public:
     // Edge initialization. The last parameter specifies the boundary condition for pressure
     EdgeProperty(int ID, int s, int hd, int tl, double al, double bet, double gam, double hh)
-        : id(ID), steps(s), head(hd), tail(tl), alpha(al), beta(bet), gamma(gam), h(hh), 
+        : steps(s), id(ID), head(hd), tail(tl), alpha(al), beta(bet), gamma(gam), h(hh), 
         Q(2, std::vector<double>(s, 0.0)), P(2, std::vector<double>(s, 0.0))
     {};
 
@@ -133,7 +133,7 @@ private:
 
 public:
     VertexProperty(int ID, double hh, double p, double gm) 
-        : h(hh), flags(false), gamma(gm), id(ID), adjacent_vert(0)
+        : h(hh), gamma(gm), id(ID), flags(false), adjacent_vert(0)
     {
         P[0] = p;
         P[1] = p;
