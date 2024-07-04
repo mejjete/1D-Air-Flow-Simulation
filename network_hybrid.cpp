@@ -72,28 +72,6 @@ int main(int argc, char **argv)
     VertexProperty vertex = readJsonNetwork(json_network, mpi_rank);
 
     #if 1
-    int team_size = vertex.getEdgeCount();
-    omp_set_num_threads(team_size);
-
-    #pragma omp parallel 
-    {
-        // #pragma omp master
-        //     std::cout << "Vertex: " << vertex.getID() << std::endl;
-        
-        #pragma omp critical
-        {
-            if(vertex.getID() != 0)
-            {
-                int thread_id = omp_get_thread_num();
-                EdgeProperty &edge = vertex.getEdge(thread_id);
-                printf("[v: %d; t: %d] has edge with number %d\n", vertex.getID(), thread_id, edge.getID()); 
-            }
-        }
-    }
-
-    #endif 
-
-    #if 0
     // Team size is equal to number of outcoming edges in dedicated vertex
     int team_size = vertex.getEdgeCount();
     omp_set_num_threads(team_size);
@@ -110,7 +88,7 @@ int main(int argc, char **argv)
         if(team_size > 0 && vertex.getID() != 0)
         {
             int thread_id = omp_get_thread_num();
-            EdgeProperty &edge = vertex.getEdges()[thread_id];
+                EdgeProperty &edge = vertex.getEdge(thread_id);
             int s_step = edge.getSteps();
 
             // Main calculation
@@ -257,13 +235,6 @@ EdgeProperty &VertexProperty::getEdge(size_t edge_ID)
         }
         else 
             return group.getEdges()[edge_ID];
-
-        // for(auto &single_edge : group.getEdges())
-        // {
-        //     if(single_edge.getID() == edge_ID)
-        //         return single_edge;
-        //     edge_iterator++;
-        // }
     }
 
     throw std::runtime_error("Edge: " + std::to_string(edge_ID) + " does not exist in vertex " 
