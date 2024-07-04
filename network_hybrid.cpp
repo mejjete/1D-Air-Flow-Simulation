@@ -1,7 +1,5 @@
-#include <algorithm>
 #include <cstdio>
 #include <iostream>
-#include <math.h>
 #include <iomanip>
 #include <string>
 #include <set>
@@ -73,8 +71,32 @@ int main(int argc, char **argv)
 
     VertexProperty vertex = readJsonNetwork(json_network, mpi_rank);
 
+    #if 1
+    int team_size = vertex.getEdgeCount();
+    omp_set_num_threads(team_size);
+
+    #pragma omp parallel 
+    {
+        // #pragma omp master
+        //     std::cout << "Vertex: " << vertex.getID() << std::endl;
+        
+        #pragma omp critical
+        {
+            if(vertex.getID() != 0)
+            {
+                int thread_id = omp_get_thread_num();
+                EdgeProperty &edge = vertex.getEdge(thread_id);
+                printf("[v: %d; t: %d] has edge with number %d\n", vertex.getID(), thread_id, edge.getID()); 
+            }
+        }
+    }
+
+    #endif 
+
     #if 0
-    // omp_set_num_threads(team_size);
+    // Team size is equal to number of outcoming edges in dedicated vertex
+    int team_size = vertex.getEdgeCount();
+    omp_set_num_threads(team_size);
 
     #pragma omp parallel
     {
@@ -85,11 +107,11 @@ int main(int argc, char **argv)
         }
 
         // Head vertex has no incoming edges
-        if(team_size > 0)
+        if(team_size > 0 && vertex.getID() != 0)
         {
             int thread_id = omp_get_thread_num();
             EdgeProperty &edge = vertex.getEdges()[thread_id];
-            int s_step = edge->getSteps();
+            int s_step = edge.getSteps();
 
             // Main calculation
             for(int i = 0; i < t_step; i++)
@@ -103,7 +125,7 @@ int main(int argc, char **argv)
                 #pragma omp master
                 {
                     // Exchange parameters
-                    double source_Q;
+                    // double source_Q;
                 }
 
                 // Wait till master thread completes the communication so we can continue calculation
@@ -112,33 +134,26 @@ int main(int argc, char **argv)
 
             #pragma omp critical
             {
-                printf("Edge %d\n", edge->getID());
-                printf("\tQ: %f\n", edge->getLastQ(t_step, s_step - 1));
-                printf("\tP: %f\n", edge->getLastP(t_step, s_step - 1));
+                printf("Edge %d\n", edge.getID());
+                printf("\tQ: %f\n", edge.getLastQ(t_step, s_step - 1));
+                printf("\tP: %f\n", edge.getLastP(t_step, s_step - 1));
             }
         }
     }
 
     #endif
 
-    // fflush(stdout);
-    // MPI_Barrier(MPI_COMM_WORLD);
+    // printf("Vertex: %d\n", vertex.getID());
+    // for(auto iter : vertex.getEdgeGroups())
+    // {
+    //     std::cout << "\tGroup: ";
+    //     for(auto edge : iter.getEdges())
+    //         std::cout << edge.getID() << " ";
+    //     std::cout << std::endl;
+    // } 
 
-    printf("Vertex: %d\n", vertex.getID());
-    for(auto iter : vertex.getEdgeGroups())
-    {
-        std::cout << "\tGroup: ";
-        for(auto edge : iter.getEdges())
-            std::cout << edge.getID() << " ";
-        std::cout << std::endl;
-    }
-
-    #if 0
-    printf("Adjacent vertices: \t");
-    for(auto i : vertex.getVertex())
-        printf("%d ", i);
-    printf("\n");
-    #endif 
+    // printf("Vertex: %d\n", vertex.getID());
+    // printf("\tExpecting messages: %d\n", vertex.getVertexNum());
 
     MPI_Finalize();
     return 0;
@@ -189,7 +204,7 @@ VertexProperty readJsonNetwork(boost::property_tree::ptree &json_network, int ra
 
         /**
          *  Parallel Edge Reduction mechanism requires us to know hom much messages we are gonna
-         *  receive. Because some of the outcoming edges can be grouped together and sent as a 
+         *  receive. Because some outcoming edges can be grouped together and sent as a 
          *  1 single message, we have to make sure we receive all messages by tracking message amount.
         */
         if(head == rank)
@@ -231,15 +246,36 @@ void VertexProperty::addEdge(EdgeProperty edge)
         iter->addEdge(edge);
 }
 
-std::vector<EdgeProperty> VertexProperty::getEdges()
+EdgeProperty &VertexProperty::getEdge(size_t edge_ID)
 {
-    std::vector<EdgeProperty> edges;
-
-    for(auto group : edge_groups)
+    for(auto &group : edge_groups)
     {
-        for(auto single_edge : group.getEdges())
-            edges.push_back(single_edge);
+        if(edge_ID >= group.getEdges().size())
+        {
+            edge_ID -= group.getEdges().size();
+            continue;
+        }
+        else 
+            return group.getEdges()[edge_ID];
+
+        // for(auto &single_edge : group.getEdges())
+        // {
+        //     if(single_edge.getID() == edge_ID)
+        //         return single_edge;
+        //     edge_iterator++;
+        // }
     }
 
-    return edges;
+    throw std::runtime_error("Edge: " + std::to_string(edge_ID) + " does not exist in vertex " 
+        + std::to_string(getID()));
+}
+
+int VertexProperty::getEdgeCount()
+{
+    int count = 0;
+
+    for(auto &group : edge_groups)
+        count += group.getEdges().size();
+    
+    return count;
 }

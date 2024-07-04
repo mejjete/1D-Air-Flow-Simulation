@@ -96,7 +96,6 @@ public:
 class EdgeGroup
 {
 private:
-    // std::vector<EdgeProperty&> group;
     int vertex;
     
     // All elements that group contains
@@ -128,7 +127,7 @@ private:
     // Logical grouping of incoming edges into edge groups
     std::vector<EdgeGroup> edge_groups;
 
-    // Set of adjacent vertices which is used for communication 
+    // Number of adjacent vertices
     int adjacent_vert;
 
 public:
@@ -152,7 +151,7 @@ public:
         return P[i_next] = P[i_curr] + h * (gamma * flow);
     };
 
-    std::vector<EdgeProperty> getEdges();
+    EdgeProperty &getEdge(size_t edgeID);
     void addEdge(EdgeProperty edge);
 
     std::vector<EdgeGroup>& getEdgeGroups() { return edge_groups; };
@@ -166,6 +165,7 @@ public:
 
     void addVertex()            { adjacent_vert++; };
     int getVertexNum() const    { return adjacent_vert; };
+    int getEdgeCount();
 };
 
 class EdgeDebug
