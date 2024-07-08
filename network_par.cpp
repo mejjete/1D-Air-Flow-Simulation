@@ -1,3 +1,30 @@
+/**
+ *                              Pure MPI Parallel Edge Simulator
+ *  
+ *  In this scheme, 1 MPI process is calculating flow and pressure inside 1 edge. We have straight 1 to 1 mapping.
+ *  
+ *  Edge is described by 2 objects: EdgeProperty and EdgeDebug.
+ *  EdgeProperty class holds all edge-related information about a single edge, its coefficients, ID etc.
+ *  EdgeDebug is used for recording information about pressure and flow after some temporal steps. It is used
+ *  by gnuplot to plot graphics and observe flow and pressure behavior.  
+ * 
+ *  Vertex is described by 2 objects: VertexProperty and VertexDebug 
+ *  Just like with an EdgeProperty, it contains vertex information which is used for communication and 
+ *  computation. VertexDebug has the same goal as EdgeDebug
+ *  
+ *  Single Edge calculation steps:
+ *  1. Obtain pressure from adjacent vertex
+ *  2. Calculate flow and pressure
+ *  3. Send flow to adjacent vertex 
+ * 
+ *  After calculation is done, all processes sends target and source flows back to a process with rank 0,
+ *  which is called a main process. Main process, in turn, is responsible for 0th edge AND for pressure 
+ *  adaptation in each vertex.
+ *  
+ *  Pressure adaptation happens in each vertex after all calculation is done on a single temporal step.
+ *  After edge has calculated both pressure and flow, pressure in vertices should be adapted or synchronized. 
+ */
+
 #include <iostream>
 #include <vector>
 #include <math.h>
@@ -9,7 +36,6 @@
 #include <tuple>
 #include <algorithm>
 #include <mpi.h>
-#include <omp.h>
 #include "network_par.hpp"
 
 // For argument message passing between MPI processes
@@ -293,10 +319,7 @@ int main(int argc, char **argv)
         else 
         {
             /**
-             *  MPI guarantees to recieve messages in order they are sent.
-             *  
-             *  Additionally, we must guarantee that 2 messages has been sent in right order,
-             *  so following calls to MPI_Recv do not yeild any delays.
+             *  Each process will receive incoming and outcoming pressure for their edge
              */
             MPI_Recv(buff[mpi_rank], 2, MPI_DOUBLE, 0, PRESSURE, MPI_COMM_WORLD, MPI_STATUS_IGNORE);  
             source_P = buff[mpi_rank][0];
