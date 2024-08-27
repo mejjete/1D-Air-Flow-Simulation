@@ -119,7 +119,6 @@ private:
     double h;
     double gamma;
     int id;
-    int out_message;
 
     // Set to true if this vertex has to be updated during adaptation
     bool flags;
@@ -127,12 +126,12 @@ private:
     // Logical grouping of incoming edges into edge groups
     std::vector<EdgeGroup> edge_groups;
 
-    // Number of adjacent vertices
-    int adjacent_vert;
+    // Outgoing vertices
+    std::vector<int> out_vertices;
 
 public:
     VertexProperty(int ID, double hh, double p, double gm) 
-        : h(hh), gamma(gm), id(ID), flags(false), adjacent_vert(0)
+        : h(hh), gamma(gm), id(ID), flags(false)
     {
         P[0] = p;
         P[1] = p;
@@ -157,14 +156,12 @@ public:
     std::vector<EdgeGroup>& getEdgeGroups() { return edge_groups; };
     void setGamma(double g)     { gamma = g; };
     void setP(double Pp)        { P[0] = Pp; P[1] = Pp; };
-    void setOutMsg(int msg)     { out_message = msg; };
-    int getOutMsg() const       { return out_message; };
     auto getP(int t_step) const { return P[t_step % 2]; };
     int getID() const           { return id; };
     void setDefault()           { flags = true; };
 
-    void addVertex()            { adjacent_vert++; };
-    int getVertexNum() const    { return adjacent_vert; };
+    void addOutVertex(int vert)         { out_vertices.push_back(vert); };
+    std::vector<int>& getOutVertex()    { return out_vertices; };
     int getEdgeCount();
 };
 

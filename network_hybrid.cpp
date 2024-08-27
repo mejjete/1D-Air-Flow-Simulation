@@ -85,10 +85,10 @@ int main(int argc, char **argv)
         }
 
         // Head vertex has no incoming edges
-        if(team_size > 0 && vertex.getID() != 0)
+        if(team_size > 0)
         {
             int thread_id = omp_get_thread_num();
-                EdgeProperty &edge = vertex.getEdge(thread_id);
+            EdgeProperty &edge = vertex.getEdge(thread_id);
             int s_step = edge.getSteps();
 
             // Main calculation
@@ -102,11 +102,33 @@ int main(int argc, char **argv)
 
                 #pragma omp master
                 {
-                    // Exchange parameters
-                    // double source_Q;
+                    double source_Q = 0.0;
+                    double target_Q = 0.0;
+
+                    // Receive pressure from adjacent vertices
+                    std::vector<double> pressure;
+                    pressure.reserve(vertex.getOutVertex().size());
+
+                    for(size_t msg = 0; msg < vertex.getOutVertex().size(); msg++)
+                    {
+                        MPI_Status status;
+                        double temp;
+                        MPI_Recv(&temp, 1, MPI_DOUBLE, MPI_ANY_SOURCE, FLOW, MPI_COMM_WORLD, &status);
+                        pressure[status.MPI_SOURCE] = temp;
+                    }
+
+                    // Send flows to adjacent vertices
+                    for(auto out_vert : vertex.getOutVertex())
+                        MPI_Ssend(&target_Q, 1, MPI_DOUBLE, out_vert, FLOW, MPI_COMM_WORLD);
+                    
+                    for(auto &group : vertex.getEdgeGroups())
+                        MPI_Ssend(&source_Q, 1, MPI_DOUBLE, group.getVertex(), FLOW, MPI_COMM_WORLD);
                 }
 
-                // Wait till master thread completes the communication so we can continue calculation
+                if(mpi_rank == 5)
+                    std::cout << i << std::endl;
+
+                // Wait till master thread completes communication so we can continue calculation
                 #pragma omp barrier
             }
 
@@ -117,21 +139,53 @@ int main(int argc, char **argv)
                 printf("\tP: %f\n", edge.getLastP(t_step, s_step - 1));
             }
         }
+        else 
+        {
+            #pragma omp parallel
+            {
+                for(int i = 0; i < t_step; i++)
+                {
+                    double temp;
+                    MPI_Recv(&temp, 1, MPI_DOUBLE, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                }
+            }
+        }
     }
 
     #endif
 
-    // printf("Vertex: %d\n", vertex.getID());
-    // for(auto iter : vertex.getEdgeGroups())
-    // {
-    //     std::cout << "\tGroup: ";
-    //     for(auto edge : iter.getEdges())
-    //         std::cout << edge.getID() << " ";
-    //     std::cout << std::endl;
-    // } 
+    #if 0
+    {
+        std::stringstream strstream;
+        strstream << "[v" << vertex.getID() << "]: ";
+        for(auto iter : vertex.getOutVertex())
+            strstream << std::to_string(iter) << " ";
+        std::cout << strstream.str() << std::endl;
+    }
+    #endif
 
-    // printf("Vertex: %d\n", vertex.getID());
-    // printf("\tExpecting messages: %d\n", vertex.getVertexNum());
+    #if 0
+    {
+        std::stringstream strstream;
+        strstream << "[v" << vertex.getID() << "]: ";
+        for(auto &iter : vertex.getEdgeGroups())
+        {
+            for(auto edge : iter.getEdges())
+                strstream << std::to_string(edge.getID()) << " ";
+        }
+        std::cout << strstream.str() << std::endl;
+    }
+    #endif
+
+    #if 0
+    {
+        std::stringstream strstream;
+        strstream << "[v" << vertex.getID() << "]: ";
+        for(auto &iter : vertex.getEdgeGroups())
+            strstream << iter.getVertex() << " ";
+        std::cout << strstream.str() << std::endl;
+    }
+    #endif
 
     MPI_Finalize();
     return 0;
@@ -183,20 +237,17 @@ VertexProperty readJsonNetwork(boost::property_tree::ptree &json_network, int ra
         /**
          *  Parallel Edge Reduction mechanism requires us to know hom much messages we are gonna
          *  receive. Because some outcoming edges can be grouped together and sent as a 
-         *  1 single message, we have to make sure we receive all messages by tracking message amount.
+         *  1 single message, we have to make sure we receive all messages by tracking 
+         *  vertices we have to send this data.
         */
         if(head == rank)
-        {
             out_edges.insert(std::make_pair(head, tail));
-            vert.insert(tail);
-        }
     }
 
-    // Add adjacent vertices
-    for(auto _[[maybe_unused]] : vert)
-        vertex.addVertex();
+    // Add out vertices
+    for(auto vertID : out_edges)
+        vertex.addOutVertex(vertID.second);
 
-    vertex.setOutMsg(out_edges.size());
     return vertex;
 }
 
