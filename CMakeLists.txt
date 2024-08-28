@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.10)
 project(simpar)
 
 find_package(OpenMP REQUIRED)
+find_package(MPI)
 
 set(CMAKE_CXX_COMPILER mpicxx)
 set(CMAKE_CXX_STANDARD 17)
@@ -9,6 +10,37 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+
+set(CONFIG_DIR "${CMAKE_SOURCE_DIR}/config")
+set(OUTPUT_DIR "${CMAKE_BINARY_DIR}/bin")
+set(CONFIG_FILES "Big_Network.json"
+                "Network.json"
+                "Edge_1.json"
+                "Edge_2.json"
+                "Edge_3.json"
+                "Edge_4.json"
+                "Edge_5.json"
+                "Edge_6.json"
+                "Edge_7.json"
+                "Edge_8.json"
+)
+
+# Iterate over each file and create a symlink
+foreach(file ${CONFIG_FILES})
+    add_custom_command(
+        OUTPUT "${OUTPUT_DIR}/${file}"
+        COMMAND ${CMAKE_COMMAND} -E create_symlink "${CONFIG_DIR}/${file}" "${OUTPUT_DIR}/${file}"
+        DEPENDS "${CONFIG_DIR}/${file}"
+        COMMENT "Creating symlink for ${file}"
+    )
+
+    list(APPEND SYMLINKS "${OUTPUT_DIR}/${file}")
+endforeach()
+
+add_custom_target(simpar ALL DEPENDS ${SYMLINKS})
+
+# Optionally, make the actual build target depend on the symlink target
+add_dependencies(${PROJECT_NAME} simpar)
 
 add_executable(sequential sequential.cpp )
 add_executable(network network.cpp network_debug.cpp)
