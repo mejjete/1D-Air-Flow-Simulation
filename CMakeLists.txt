@@ -2,7 +2,8 @@ cmake_minimum_required(VERSION 3.10)
 project(simpar)
 
 find_package(OpenMP REQUIRED)
-find_package(MPI)
+find_package(MPI REQUIRED)
+find_package(Boost 1.66.0 REQUIRED)
 
 set(CMAKE_CXX_COMPILER mpicxx)
 set(CMAKE_CXX_STANDARD 17)
@@ -47,16 +48,26 @@ add_executable(network network.cpp network_debug.cpp)
 add_executable(network_par network_par.cpp network_par_debug.cpp)
 add_executable(network_hybrid network_hybrid.cpp)
 
+option(ENABLE_DUMP "Enable dump" OFF)
+set(VIS_DUMP_OPT "DEBUG")
+
+if(ENABLE_DUMP)
+    target_compile_definitions(sequential       PUBLIC ${VIS_DUMP_OPT})
+    target_compile_definitions(network          PUBLIC ${VIS_DUMP_OPT})
+    target_compile_definitions(network_par      PUBLIC ${VIS_DUMP_OPT})
+    target_compile_definitions(network_hybrid   PUBLIC ${VIS_DUMP_OPT})
+endif()
+
 target_compile_options(sequential PUBLIC 
-    -Wall -Wextra -Wunused-parameter)
+    -Wall -Wextra -pedantic -Wunused-parameter)
 
 target_compile_options(network PUBLIC 
-    -Wall -Wextra -Wunused-parameter)
+    -Wall -Wextra -pedantic -Wunused-parameter)
 
 target_compile_options(network_par PUBLIC 
-    -Wall -Wextra -Wunused-parameter)
-
+    -Wall -Wextra -pedantic -Wunused-parameter)
+    
 target_compile_options(network_hybrid PUBLIC 
-    -Wall -Wextra -Wunused-parameter)
+    -Wall -Wextra -pedantic -Wunused-parameter)
 
 target_link_libraries(network_hybrid PRIVATE OpenMP::OpenMP_CXX)
