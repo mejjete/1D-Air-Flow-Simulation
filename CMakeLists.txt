@@ -5,7 +5,6 @@ find_package(OpenMP REQUIRED)
 find_package(MPI REQUIRED)
 find_package(Boost 1.66.0 REQUIRED)
 
-set(CMAKE_CXX_COMPILER mpicxx)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
