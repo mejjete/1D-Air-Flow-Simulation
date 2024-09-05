@@ -203,11 +203,10 @@ int main(int argc, char **argv)
      * 
      * 
      *  Phase 1: Flow and pressure calculation inside edges. 
-     *  During this phase we calculate two parameters for each edge such as an independent entity.                                                             
+     *  During this phase we calculate two parameters for each edge as an independent entity.                                                             
      * 
      *  Phase 2: Pressure adaptation. 
-     *  After initial calculations is done, we have to adapt pressure in connecting points 
-     *  (vertices) according to pressure in neighboring points (vertices).
+     *  After initial calculations is done, we have to adapt pressure in vertices
     */
 
     #ifdef DEBUG
