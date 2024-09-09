@@ -18,11 +18,14 @@
  *  3. Send flow to adjacent vertex 
  * 
  *  After calculation is done, all processes sends target and source flows back to a process with rank 0,
- *  which is called a main process. Main process, in turn, is responsible for 0th edge AND for pressure 
+ *  which is called a main process. Main process, in turn, is responsible for 0th edge simulation AND for pressure 
  *  adaptation in each vertex.
  *  
  *  Pressure adaptation happens in each vertex after all calculation is done on a single temporal step.
  *  After edge has calculated both pressure and flow, pressure in vertices should be adapted or synchronized. 
+ * 
+ *  !!! HOW TO RUN !!!
+ *  mpirun -np 8 --oversubcribe ./network_par [Network.json or Big_Network.json] 
  */
 
 #include <iostream>
@@ -94,6 +97,13 @@ int main(int argc, char **argv)
         const int a = json_network.get<int>("a");
         edges = total_edg;
 
+        if(mpi_size != total_edg)
+        {
+            std::cerr << "Simulation requires " << edges << " processes but only " << mpi_size 
+                << " supplied!!!" << std::endl;
+            MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
+        }
+
         auto default_out = cout.flags();
         cout << "--------------------------------------------------" << endl;
         cout << "Simulation parameters" << endl;
@@ -108,17 +118,10 @@ int main(int argc, char **argv)
         cout << "--------------------------------------------------" << endl;
         cout.flags(default_out);
 
-        int total_edges = 0;
-
-        if(mpi_size != total_edg)
-        {
-            std::cerr << "Total number of processes does not equal total number of edges... Exiting" << std::endl;
-            MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
-        }
-
         /*                  EDGE INITIALIZATION              */
         boost::property_tree::ptree arrayEdges = json_network.get_child("edge");
-        
+        int total_edges = 0;
+
         vector<double> vertex_gamma(total_vert, 0.0);
         vector<vector<int>> vertex_incoming(total_vert, vector<int>(0, 0));
         vector<vector<int>> vertex_outcoming(total_vert, vector<int>(0, 0));

@@ -1,3 +1,8 @@
+/**
+ *  !!! HOW TO RUN !!!
+ *  mpirun -np 6 ./network_hybrid [Network.json or Big_Network.json]
+ */
+
 #include <cstdio>
 #include <iostream>
 #include <iomanip>

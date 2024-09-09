@@ -1,3 +1,8 @@
+/**
+ *  !!! HOW TO RUN !!!
+ *  ./network [Network.json or Big_Network.json]
+ */
+
 #include <iostream>
 #include <vector>
 #include <math.h>

@@ -1,10 +1,13 @@
+/**
+ *  !!! HOW TO RUN !!!
+ *  ./sequential Edge_N.json, where N is the number of edge to simulate. Numbered from 1 to 9
+ */
+
 #include <iostream>
 #include <vector>
 #include <math.h>
 #include <iomanip>
 #include <string>
-#include <boost/circular_buffer.hpp>
-#include <boost/container/vector.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
